@@ -4,7 +4,7 @@ Chạy theo đúng thứ tự bên dưới để recreate lab sau reboot, theo c
 
 ## 0) Preconditions
 
-- Repo: `~/Downloads/go-micro`
+- Repos: `~/Downloads/go-microservices/go-micro-infra`, `~/Downloads/go-microservices/go-micro-gitops`
 - Contexts dùng: `kind-management`, `kind-dev`, `kind-staging`, `kind-prod`
 - API host ports:
   - management: `127.0.0.1:33443`
@@ -17,7 +17,7 @@ Chạy theo đúng thứ tự bên dưới để recreate lab sau reboot, theo c
 ## 1) Recreate 4 clusters
 
 ```bash
-cd ~/Downloads/go-micro
+cd ~/Downloads/go-microservices/go-micro-infra
 
 kind delete cluster --name management || true
 kind delete cluster --name dev || true
@@ -268,10 +268,11 @@ kubectl label secret cluster-prod -n argocd argocd.argoproj.io/secret-type=clust
 
 ```bash
 kubectl config use-context kind-management
-cd ~/Downloads/go-micro
+cd ~/Downloads/go-microservices/go-micro-gitops
 
-# repos
-argocd repo add https://github.com/minhtri1612/go-micro.git || true
+# repos (GitOps + Infra — bắt buộc cho multi-source Application)
+argocd repo add https://github.com/minhtri1612/go-micro-gitops.git || true
+argocd repo add https://github.com/minhtri1612/go-micro-infra.git || true
 argocd repo add https://argoproj.github.io/argo-helm --type helm --name argo-helm || true
 argocd repo add https://metallb.github.io/metallb --type helm --name metallb || true
 argocd repo add https://helm.cilium.io/ --type helm --name cilium || true
@@ -440,7 +441,7 @@ argocd --grpc-web app sync monitoring-prod
 Chỉ chạy sau khi `monitoring-management` healthy.
 
 ```bash
-cd ~/Downloads/go-micro
+cd ~/Downloads/go-microservices/go-micro-infra
 chmod +x scripts/sync-monitoring-remote-write-url.sh
 ./scripts/sync-monitoring-remote-write-url.sh
 kubectl --context kind-management -n monitoring wait --for=condition=Ready pod -l app.kubernetes.io/name=prometheus --timeout=600s
@@ -518,7 +519,7 @@ Dùng khi máy/cluster có egress ra AWS và bạn đã có secret JSON trên Se
    **Khuyen nghi (tranh nhap tay sai key): dong bo tu Terraform state**
 
    ```bash
-   cd ~/Downloads/go-micro/terraform_secret
+   cd ~/Downloads/go-microservices/go-micro-infra/terraform_secret
    TF_AKID="$(terraform output -raw eso_access_key_id)"
    TF_SAK="$(terraform output -raw eso_secret_access_key)"
 
@@ -549,10 +550,10 @@ for ctx in kind-dev kind-staging kind-prod; do
 done
 ```
 
-4. Apply `ClusterSecretStore` + `ExternalSecret` từ repo (từ thư mục gốc repo):
+4. Apply `ClusterSecretStore` + `ExternalSecret` từ repo (từ thư mục gốc **go-micro-gitops**):
 
 ```bash
-  cd ~/Downloads/go-micro
+  cd ~/Downloads/go-microservices/go-micro-gitops
 
     # DEV
     helm template external-secrets external-secrets/applications \
@@ -655,7 +656,7 @@ argocd app wait cilium-staging --health --sync --timeout 600 --grpc-web
 argocd app wait cilium-prod --health --sync --timeout 600 --grpc-web
 
 # 2) Chay recovery script (CA bundle + restart)
-cd ~/Downloads/go-micro
+cd ~/Downloads/go-microservices/go-micro-infra
 ./scripts/kind-clustermesh-sync-spoke-from-hub.sh
 
 # 3) Verify
@@ -698,7 +699,7 @@ Chay recovery neu thay dau hieu:
 - Recreate cluster / doi IP LB / rotate cert
 
 ```bash
-cd ~/Downloads/go-micro
+cd ~/Downloads/go-microservices/go-micro-infra
 ./scripts/kind-clustermesh-sync-spoke-from-hub.sh
 
 argocd app sync cilium-management --grpc-web
