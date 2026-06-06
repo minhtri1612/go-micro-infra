@@ -226,6 +226,7 @@ ROLLOUT_SERVICE=<service cụ thể, ví dụ product>   # tránh để auto khi
 ## 3) Register dev/staging/prod clusters to Argo CD
 
 ```bash
+cd ~/Downloads/go-microservices/go-micro-infra
 kubectl --context kind-dev apply -f kind/dev-argocd-manager.yaml
 kubectl --context kind-staging apply -f kind/staging-argocd-manager.yaml
 kubectl --context kind-prod apply -f kind/prod-argocd-manager.yaml
