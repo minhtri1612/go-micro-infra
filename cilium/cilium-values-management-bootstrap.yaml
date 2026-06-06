@@ -1,0 +1,29 @@
+# Helm Cilium **lần đầu** trên management (trước kube-prometheus-stack & MetalLB).
+# Dùng cùng lúc với cilium-values-management.yaml:
+#   helm upgrade --install cilium ... -f .../cilium-values-management.yaml -f .../cilium-values-management-bootstrap.yaml
+#
+# Override 2 thứ chưa có lúc bootstrap:
+# 1) ServiceMonitor CRD (chưa cài Prometheus Operator)
+# 2) LoadBalancer → NodePort (chưa cài MetalLB, Helm --wait sẽ treo chờ EXTERNAL-IP mãi)
+#
+# Sau khi Argo sync monitoring (05) + metallb-management (18) + cilium-management (18-cilium),
+# Git chỉ cần cilium-values-management.yaml (ServiceMonitor bật, LoadBalancer + MetalLB IP).
+
+hubble:
+  metrics:
+    serviceMonitor:
+      enabled: false
+
+prometheus:
+  serviceMonitor:
+    enabled: false
+
+operator:
+  prometheus:
+    serviceMonitor:
+      enabled: false
+
+clustermesh:
+  apiserver:
+    service:
+      type: NodePort

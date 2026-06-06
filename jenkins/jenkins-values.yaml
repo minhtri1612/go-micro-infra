@@ -1,0 +1,161 @@
+# Cấu hình values cho Jenkins Helm Chart
+# Controller image: build từ jenkins/Dockerfile (plugin đóng gói sẵn) — không dùng installPlugins runtime.
+controller:
+  image:
+    repository: minhtri1612/jenkins-custom
+    tag: "2.492.3-lts-jdk17-pkg7"
+    pullPolicy: IfNotPresent
+
+  # Chart mặc định pod runAsNonRoot:true → dockerd trong dind không chạy được (Argo Progressing mãi).
+  # Bỏ runAsNonRoot ở pod; jenkins container vẫn uid 1000 qua containerSecurityContext của chart.
+  podSecurityContextOverride:
+    fsGroup: 1000
+
+  containerEnv:
+    - name: DOCKER_HOST
+      value: tcp://127.0.0.1:2375
+
+  # Secret jenkins-ci-env: bash scripts/jenkins-setup-ci-secrets.sh (trước hoặc sau sync Jenkins)
+  containerEnvFrom:
+    - secretRef:
+        name: jenkins-ci-env
+        optional: true
+
+  # DinD: sidecar chạy root (runAsUser 0), Jenkins gọi qua DOCKER_HOST.
+  sidecars:
+    additionalSidecarContainers:
+      - name: dind
+        image: docker:27.5.1-dind
+        command: ["dockerd", "--host=tcp://0.0.0.0:2375", "--host=unix:///var/run/docker.sock", "--tls=false"]
+        securityContext:
+          privileged: true
+          runAsUser: 0
+          runAsNonRoot: false
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: "2"
+            memory: 2Gi
+        volumeMounts:
+          - name: dind-storage
+            mountPath: /var/lib/docker
+
+  admin:
+    username: "admin"
+    password: "admin"
+
+  # Plugin bắt buộc cho JCasC + Job DSL pipeline seed.
+  # Nếu thiếu `configuration-as-code`/`job-dsl` thì file configScripts không tạo được job.
+  installPlugins:
+    - kubernetes
+    - workflow-aggregator
+    - pipeline-model-definition
+    - configuration-as-code
+    - job-dsl
+    - git
+    - pipeline-stage-view
+    - blueocean
+
+  installLatestPlugins: false
+
+  # Init nhẹ hơn (không jenkins-plugin-cli nặng); giữ RAM phòng chart vẫn chạy bước copy.
+  initContainerResources:
+    requests:
+      cpu: "200m"
+      memory: "512Mi"
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
+
+  persistence:
+    enabled: true
+    storageClass: standard
+    size: "10Gi"
+
+  numExecutors: 1
+
+  javaOpts: "-Duser.timezone=Asia/Ho_Chi_Minh"
+
+  ingress:
+    enabled: false
+
+  JCasC:
+    defaultConfig: true
+    configScripts:
+      01-github-pipeline-job: |
+        jobs:
+          - script: |
+              pipelineJob('go-micro') {
+                displayName('go-micro (GitHub)')
+                parameters {
+                  choiceParam('PIPELINE_SCOPE', ['auto', 'build-only', 'build-and-full', 'full', 'dependency-only', 'business-only', 'route-smoke-only', 'load-only'], 'auto = detect: env/ → test; *-service/ → build 1 service + test')
+                  choiceParam('BUILD_SERVICES', ['auto', 'all', 'product', 'inventory', 'order', 'payment', 'noti', 'client'], 'auto = chỉ service đổi trong commit')
+                  booleanParam('PUSH_GIT', true)
+                  booleanParam('DEPLOY_EXISTING_ENV_TAGS', false)
+                }
+                triggers { scm('H/5 * * * *') }
+                definition {
+                  cpsScm {
+                    scm {
+                      git {
+                        remote {
+                          url('https://github.com/minhtri1612/go-micro.git')
+                        }
+                        branch('*/main')
+                      }
+                    }
+                    scriptPath('Jenkinsfile')
+                  }
+                }
+              }
+
+      02-ci-credentials: |
+        credentials:
+          system:
+            domainCredentials:
+            - credentials:
+              - usernamePassword:
+                  scope: GLOBAL
+                  id: dockerhub-credentials
+                  username: "${DOCKERHUB_USER}"
+                  password: "${DOCKERHUB_PASSWORD}"
+                  description: Docker Hub push (from Secret jenkins-ci-env)
+              - usernamePassword:
+                  scope: GLOBAL
+                  id: github-go-micro-pat
+                  username: "${GITHUB_USER}"
+                  password: "${GITHUB_PAT}"
+                  description: Git push env/*.yaml (from Secret jenkins-ci-env)
+
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "2Gi"
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
+
+serviceAccountAgent:
+  create: true
+
+rbac:
+  create: true
+
+persistence:
+  volumes:
+    - name: kubeconfig
+      secret:
+        secretName: jenkins-internal-kubeconfig
+        defaultMode: 0644
+        items:
+          - key: config
+            path: config
+    - name: dind-storage
+      emptyDir: {}
+  mounts:
+    - name: kubeconfig
+      mountPath: /var/jenkins_home/.kube/config
+      subPath: config
+      readOnly: true

@@ -1,0 +1,13 @@
+# Danh sách plugin chính cho Jenkins GitOps (bỏ version cứng để tránh lỗi tải từ Update Center)
+kubernetes
+workflow-aggregator
+pipeline-model-definition
+git
+configuration-as-code
+job-dsl
+pipeline-stage-view
+blueocean
+workflow-api
+workflow-cps
+workflow-scm-step
+workflow-support

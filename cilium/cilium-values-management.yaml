@@ -1,0 +1,110 @@
+# Cilium trên cluster **management** (hub ClusterMesh + Hubble UI). GitOps / Argo: app `cilium-management`.
+# cluster.id/name: management / 1. Spoke: cilium-cluster-*.yaml (id 2–4) + clustermesh-management-peer.yaml.
+# Helm **tay** lần đầu (trước Prometheus Operator): thêm `-f cilium-values-management-bootstrap.yaml` để tắt ServiceMonitor.
+
+cluster:
+  name: management
+  id: 1
+
+kubeProxyReplacement: true
+devices: "eth0"
+
+ipam:
+  mode: cluster-pool
+  operator:
+    clusterPoolIPv4PodCIDRList:
+      - "10.200.0.0/16"
+    clusterPoolIPv4MaskSize: 24
+
+l7Proxy: false
+
+loadBalancer:
+  algorithm: maglev
+
+encryption:
+  enabled: false
+
+clustermesh:
+  useAPIServer: true
+  # Kind management 1 node: mặc định chart / bản cũ có thể replicas=2 → pod 2 Pending →
+  # `cilium clustermesh status` lỗi "only 1 of 2 replicas are available".
+  apiserver:
+    replicas: 1
+    tls:
+      server:
+        extraDnsNames:
+          - "*.mesh.cilium.io"
+    service:
+      type: LoadBalancer
+      annotations:
+        metallb.universe.tf/loadBalancerIPs: "172.18.255.41"
+  config:
+    enabled: true
+    # Phải khớp cluster.name trên spoke (dev / staging / prod). Tạo key trong Secret
+    # cilium-clustermesh (+ cilium-kvstoremesh) trên hub — không có thì `cilium clustermesh status`
+    # luôn báo "No cluster connected" dù agent spoke đã nối etcd (CLI đọc secret để biết tên peer).
+    # GitOps ClusterMesh: management phải trỏ tới endpoint clustermesh-apiserver thực của spoke.
+    # Các IP dưới là LoadBalancer IP của spoke trên Docker network kind.
+    clusters:
+      - name: dev
+        ips:
+          - 172.18.255.11
+        port: 2379
+      - name: staging
+        ips:
+          - 172.18.255.21
+        port: 2379
+      - name: prod
+        ips:
+          - 172.18.255.31
+        port: 2379
+
+bpf:
+  lbExternalClusterIP: true
+  events:
+    drop:
+      enabled: true
+    policyVerdict:
+      enabled: true
+    trace:
+      enabled: true
+
+hubble:
+  enabled: true
+  eventBufferCapacity: "16383"
+  networkPolicyCorrelation:
+    enabled: true
+  redact:
+    enabled: false
+  skipUnknownCGroupIDs: false
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+  metrics:
+    enabled:
+      - dns:query
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
+      - port-distribution
+    enableOpenMetrics: true
+    serviceMonitor:
+      enabled: true
+    dashboards:
+      enabled: false
+
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    trustCRDsExist: true
+
+operator:
+  replicas: 1
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true

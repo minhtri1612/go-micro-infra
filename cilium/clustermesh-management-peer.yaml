@@ -1,0 +1,8 @@
+# AUTO — scripts/kind-clustermesh-peer-ip.sh — endpoint clustermesh-apiserver của management
+clustermesh:
+  config:
+    clusters:
+      - name: management
+        port: 2379
+        ips:
+          - 172.18.255.41

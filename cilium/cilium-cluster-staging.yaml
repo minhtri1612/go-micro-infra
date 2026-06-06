@@ -1,0 +1,28 @@
+# Overlay Argo: cilium-staging (cluster mesh spoke)
+cluster:
+  name: staging
+  id: 3
+
+ipam:
+  mode: cluster-pool
+  operator:
+    clusterPoolIPv4PodCIDRList:
+      - "10.202.0.0/16"
+    clusterPoolIPv4MaskSize: 24
+
+# Hubble UI: http://<IP staging-control-plane>:31202
+hubble:
+  ui:
+    enabled: true
+    service:
+      type: NodePort
+      nodePort: 31202
+
+clustermesh:
+  config:
+    enabled: true
+  apiserver:
+    service:
+      type: LoadBalancer
+      annotations:
+        metallb.universe.tf/loadBalancerIPs: "172.18.255.21"
