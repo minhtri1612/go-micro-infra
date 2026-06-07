@@ -1,5 +1,8 @@
-# Cấu hình values cho Jenkins Helm Chart
-# Controller image: build từ jenkins/Dockerfile (plugin đóng gói sẵn) — không dùng installPlugins runtime.
+# Multi-repo Jenkins (JCasC Job DSL)
+# - 6 job app: SCM → go-micro-{service}.git + Jenkinsfile → buildService()
+# - 1 job gitops: SCM → go-micro-gitops.git + Jenkinsfile → gitopsPipeline()
+# - Shared Library: go-micro-pipeline-lib@main
+# Kind lab: SCM poll (H/5) — không cần GitHub webhook / plugin github.
 controller:
   image:
     repository: minhtri1612/jenkins-custom
@@ -47,7 +50,6 @@ controller:
     password: "admin"
 
   # Plugin bắt buộc cho JCasC + Job DSL pipeline seed.
-  # Nếu thiếu `configuration-as-code`/`job-dsl` thì file configScripts không tạo được job.
   installPlugins:
     - kubernetes
     - workflow-aggregator
@@ -55,13 +57,11 @@ controller:
     - configuration-as-code
     - job-dsl
     - git
-    - github
     - pipeline-stage-view
     - blueocean
 
   installLatestPlugins: false
 
-  # Init nhẹ hơn (không jenkins-plugin-cli nặng); giữ RAM phòng chart vẫn chạy bước copy.
   initContainerResources:
     requests:
       cpu: "200m"
@@ -111,9 +111,9 @@ controller:
               apps.each { repo ->
                 pipelineJob(repo) {
                   displayName(repo)
-                  description("App repo pipeline — webhook GitHub push → buildService (Shared Library)")
+                  description("App repo → buildService() via @Library go-micro-pipeline-lib. SCM poll (Kind lab).")
                   triggers {
-                    githubPush()
+                    scm('H/5 * * * *')
                   }
                   definition {
                     cpsScm {
@@ -131,8 +131,31 @@ controller:
                   }
                 }
               }
-
-      02-ci-credentials: |
+      02-gitops-pipeline-job: |
+        jobs:
+          - script: |
+              pipelineJob('go-micro-gitops') {
+                displayName('go-micro-gitops')
+                description('GitOps repo → gitopsPipeline(): env/ test+promote, rollback. SCM poll (Kind lab).')
+                triggers {
+                  scm('H/5 * * * *')
+                }
+                definition {
+                  cpsScm {
+                    scm {
+                      git {
+                        remote {
+                          url('https://github.com/minhtri1612/go-micro-gitops.git')
+                          credentialsId('github-go-micro-pat')
+                        }
+                        branch('*/main')
+                      }
+                    }
+                    scriptPath('Jenkinsfile')
+                  }
+                }
+              }
+      03-ci-credentials: |
         credentials:
           system:
             domainCredentials:
@@ -148,7 +171,7 @@ controller:
                   id: github-go-micro-pat
                   username: "${GITHUB_USER}"
                   password: "${GITHUB_PAT}"
-                  description: Git push env/*.yaml (from Secret jenkins-ci-env)
+                  description: GitHub PAT — clone private repos + push go-micro-gitops
 
   resources:
     requests:

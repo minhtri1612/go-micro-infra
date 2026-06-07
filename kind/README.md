@@ -101,7 +101,14 @@ Application: `argocd/bootstrap/22-jenkins-mgmt.yaml` → Service **`jenkins-mana
 
 **Mật khẩu đăng nhập Jenkins (port 8081 trên máy):** Cổng **8081 chỉ là port-forward** — **không “nằm ở” 8081, cũng không lưu password ở đó.** Lấy pass từ Secret **`jenkins-management`** / key **`jenkins-admin-password`** (lệnh trong block dưới). User: **`admin`**. Pass hiển thị trong Secret **có thể không khớp** PVC nếu đã đổi pass trên UI hoặc home cũ — xem khối **“Đăng nhập vẫn báo sai…”** ngay sau block bash.
 
-Job mẫu **go-micro** (kết nối GitHub) được khai báo bằng **JCasC + Job DSL** trong `jenkins/jenkins-values.yaml` (`configScripts`); pipeline thật nằm ở **`Jenkinsfile`** ở root repo. Repo **private** cần thêm **credentials** trong JCasC + `remote { credentials('id') }` (không commit token).
+**Jobs Jenkins (multi-repo):** JCasC + Job DSL trong `jenkins/jenkins-values.yaml` (`configScripts`):
+
+| Job | SCM repo | Jenkinsfile |
+|-----|----------|-------------|
+| `go-micro-order`, `go-micro-product`, … (6 app) | `github.com/minhtri1612/go-micro-{app}.git` | `buildService('…')` + `@Library` |
+| `go-micro-gitops` | `go-micro-gitops.git` | `gitopsPipeline()` — test/promote `env/`, rollback |
+
+Kind lab: trigger **SCM poll** `H/5` (không cần GitHub webhook). Push code → đợi poll hoặc **Build Now**. Repo **private** cần Secret `jenkins-ci-env` + credential `github-go-micro-pat` (đã khai báo JCasC).
 
 > [!IMPORTANT]
 > **Bắt buộc** trước khi deploy/sync Jenkins:
@@ -198,9 +205,9 @@ Sau khi cài:
   - `status.currentWeight` (Rollout),
   - hoặc `TraefikService` weighted services (`stable/canary`).
 
-### 2.3) Jenkins external quality gate (manual Promote/Rollback)
+### 2.3) Jenkins quality gate (manual Promote/Rollback)
 
-Pipeline `Jenkinsfile` đã hỗ trợ gate thủ công sau khi test pass:
+Pipeline (`buildService` / `gitopsPipeline` trong **go-micro-pipeline-lib**) hỗ trợ gate thủ công sau khi test pass:
 
 - Gate hiển thị lựa chọn:
   - `Promote to stable`

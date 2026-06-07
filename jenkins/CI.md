@@ -1,4 +1,8 @@
-# CI — `PIPELINE_SCOPE=auto`
+# CI — multi-repo (`buildService` / `gitopsPipeline`)
+
+## Build image + deploy (app repos)
+
+Push code vào `go-micro-order`, `go-micro-payment`, … → job Jenkins tương ứng (`buildService('order')`) → build Docker → bump `env/dev.yaml` trên **go-micro-gitops** → test → promote.
 
 ## Không sửa tay `env/dev.yaml` khi deploy service
 
@@ -24,15 +28,16 @@ Commit **mới nhất trên `main`** là Jenkins tự push (`ci: bump tags in en
 | Cách chạy | Kết quả |
 |-----------|---------|
 | **Build Now** (Jenkins UI, Started by user) trên HEAD đó | **Test + promote** với tag trong `env/dev.yaml` (vd payment `v1.0.4`), **không** build image lại |
-| Push code `payment-service/` | Build image mới + bump env + test |
+| Push code app repo (`go-micro-order`, …) | Job app → `buildService` build + bump env + test |
+| Push `env/dev.yaml` (gitops) | Job **go-micro-gitops** → `gitopsPipeline` auto: verify Hub → test+promote |
 | `DEPLOY_EXISTING_ENV_TAGS=true` | Test/promote tag trong env (khi commit không phải `[skip ci]`) |
 | `PIPELINE_SCOPE=full` | Chỉ test/promote, bỏ qua detect commit |
 
 Muốn **image mới** → phải có commit đổi `*-service/`, không chỉ bấm Build trên commit CI.
 
-## Chỉ sửa `env/dev.yaml` (tag đã build sẵn trên Hub, ví dụ rollback v1.0.3)
+## Chỉ sửa `env/dev.yaml` (gitops repo)
 
-1. Push `env/dev.yaml` lên `main` **hoặc** đã push rồi → Jenkins Build:
+1. Push `env/dev.yaml` lên `go-micro-gitops` **hoặc** Build job **go-micro-gitops**:
    - `PIPELINE_SCOPE=auto` **hoặc**
    - bật **`DEPLOY_EXISTING_ENV_TAGS=true`** (khi commit hiện tại chỉ Jenkinsfile)
 2. Pipeline: **verify tag có trên Hub** → **skip** Build + Push Git → **chạy** Prepare + test + promote
@@ -51,9 +56,9 @@ Muốn **image mới** → phải có commit đổi `*-service/`, không chỉ b
 
 Sau Argo sync tag mới: rollout **Paused**, stable Endpoints trống, canary có pod. Jenkins **tự** `X-Canary:true` — không cần `kubectl promote` trước test. Pass test → **Rollout Decision Gate** → Promote.
 
-## Rollback tự động (`PIPELINE_SCOPE=rollback`)
+## Rollback (`go-micro-gitops` job)
 
-Không sửa tay `env/` — Jenkins đọc tag **hiện tại trong Git**, patch **−1**, verify image có trên Hub, ghi yaml + push → Argo sync.
+`PIPELINE_SCOPE=rollback` trên job **go-micro-gitops** (hoặc `gitopsPipeline()`).
 
 | Param | Ý nghĩa |
 |-------|---------|
