@@ -100,33 +100,120 @@ controller:
       01-app-pipeline-jobs: |
         jobs:
           - script: |
-              def seedAppJob = { String repoName ->
-                pipelineJob(repoName) {
-                  displayName(repoName)
-                  description("App repo → buildService() via @Library go-micro-pipeline-lib. SCM poll (Kind lab).")
-                  triggers { scm('H/5 * * * *') }
-                  definition {
-                    cpsScm {
-                      scm {
-                        git {
-                          remote {
-                            url("https://github.com/minhtri1612/${repoName}.git")
-                            credentials('github-go-micro-pat')
-                          }
-                          branch('*/main')
+              pipelineJob('go-micro-client') {
+                displayName('go-micro-client')
+                description('App repo → buildService(client). SCM poll (Kind lab).')
+                triggers { scm('H/5 * * * *') }
+                definition {
+                  cpsScm {
+                    scm {
+                      git {
+                        remote {
+                          url('https://github.com/minhtri1612/go-micro-client.git')
+                          credentials('github-go-micro-pat')
                         }
+                        branch('*/main')
                       }
-                      scriptPath('Jenkinsfile')
                     }
+                    scriptPath('Jenkinsfile')
                   }
                 }
               }
-              seedAppJob('go-micro-client')
-              seedAppJob('go-micro-order')
-              seedAppJob('go-micro-payment')
-              seedAppJob('go-micro-product')
-              seedAppJob('go-micro-inventory')
-              seedAppJob('go-micro-notification')
+              pipelineJob('go-micro-order') {
+                displayName('go-micro-order')
+                description('App repo → buildService(order). SCM poll (Kind lab).')
+                triggers { scm('H/5 * * * *') }
+                definition {
+                  cpsScm {
+                    scm {
+                      git {
+                        remote {
+                          url('https://github.com/minhtri1612/go-micro-order.git')
+                          credentials('github-go-micro-pat')
+                        }
+                        branch('*/main')
+                      }
+                    }
+                    scriptPath('Jenkinsfile')
+                  }
+                }
+              }
+              pipelineJob('go-micro-payment') {
+                displayName('go-micro-payment')
+                description('App repo → buildService(payment). SCM poll (Kind lab).')
+                triggers { scm('H/5 * * * *') }
+                definition {
+                  cpsScm {
+                    scm {
+                      git {
+                        remote {
+                          url('https://github.com/minhtri1612/go-micro-payment.git')
+                          credentials('github-go-micro-pat')
+                        }
+                        branch('*/main')
+                      }
+                    }
+                    scriptPath('Jenkinsfile')
+                  }
+                }
+              }
+              pipelineJob('go-micro-product') {
+                displayName('go-micro-product')
+                description('App repo → buildService(product). SCM poll (Kind lab).')
+                triggers { scm('H/5 * * * *') }
+                definition {
+                  cpsScm {
+                    scm {
+                      git {
+                        remote {
+                          url('https://github.com/minhtri1612/go-micro-product.git')
+                          credentials('github-go-micro-pat')
+                        }
+                        branch('*/main')
+                      }
+                    }
+                    scriptPath('Jenkinsfile')
+                  }
+                }
+              }
+              pipelineJob('go-micro-inventory') {
+                displayName('go-micro-inventory')
+                description('App repo → buildService(inventory). SCM poll (Kind lab).')
+                triggers { scm('H/5 * * * *') }
+                definition {
+                  cpsScm {
+                    scm {
+                      git {
+                        remote {
+                          url('https://github.com/minhtri1612/go-micro-inventory.git')
+                          credentials('github-go-micro-pat')
+                        }
+                        branch('*/main')
+                      }
+                    }
+                    scriptPath('Jenkinsfile')
+                  }
+                }
+              }
+              pipelineJob('go-micro-notification') {
+                displayName('go-micro-notification')
+                description('App repo → buildService(noti). SCM poll (Kind lab).')
+                triggers { scm('H/5 * * * *') }
+                definition {
+                  cpsScm {
+                    scm {
+                      git {
+                        remote {
+                          url('https://github.com/minhtri1612/go-micro-notification.git')
+                          credentials('github-go-micro-pat')
+                        }
+                        branch('*/main')
+                      }
+                    }
+                    scriptPath('Jenkinsfile')
+                  }
+                }
+              }
       02-gitops-pipeline-job: |
         jobs:
           - script: |
