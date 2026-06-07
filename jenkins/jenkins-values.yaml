@@ -121,7 +121,7 @@ controller:
                         git {
                           remote {
                             url("https://github.com/minhtri1612/${repo}.git")
-                            credentialsId('github-go-micro-pat')
+                            credentials('github-go-micro-pat')
                           }
                           branch('*/main')
                         }
@@ -146,7 +146,7 @@ controller:
                       git {
                         remote {
                           url('https://github.com/minhtri1612/go-micro-gitops.git')
-                          credentialsId('github-go-micro-pat')
+                          credentials('github-go-micro-pat')
                         }
                         branch('*/main')
                       }
