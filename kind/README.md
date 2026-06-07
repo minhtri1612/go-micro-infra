@@ -119,10 +119,12 @@ Kind lab: trigger **SCM poll** `H/5` (không cần GitHub webhook). Push code �
 kubectl config use-context kind-management
 bash scripts/jenkins-generate-internal-kubeconfig.sh
 
-# CI credentials (KHÁC ESO aws-credentials — xem scripts/jenkins-ci.env.example)
-cp scripts/jenkins-ci.env.example scripts/jenkins-ci.env
-# Sửa: DOCKERHUB_TOKEN = Hub Access Token; GITHUB_PAT = GitHub PAT
-source scripts/jenkins-ci.env && bash scripts/jenkins-setup-ci-secrets.sh
+# CI credentials — file local scripts/jenkins-ci.env (đã .gitignore, KHÔNG commit)
+# Lần ĐẦU duy nhất:
+#   cp scripts/jenkins-ci.env.example scripts/jenkins-ci.env
+#   # sửa DOCKERHUB_TOKEN (Hub Access Token) + GITHUB_PAT
+# Mỗi lần reboot / cluster mới — KHÔNG cp example (sẽ xóa token thật):
+bash scripts/jenkins-apply-ci-secrets.sh
 cd ../go-micro-gitops
 kubectl apply -f argocd/bootstrap/22-jenkins-mgmt.yaml
 argocd --grpc-web app sync jenkins-management && argocd --grpc-web app wait jenkins-management --sync --timeout 300

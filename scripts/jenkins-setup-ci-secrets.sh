@@ -7,14 +7,14 @@
 #   - Docker Hub → token tại https://hub.docker.com → Account Settings → Security
 #   - GitHub     → PAT (repo scope) để push env/dev.yaml
 #
-# Usage (từ root repo):
-#   export DOCKERHUB_USER=minhtri1612
-#   export DOCKERHUB_TOKEN=dckr_pat_xxx
-#   export GITHUB_USER=minhtri1612
-#   export GITHUB_PAT=github_pat_xxx
-#   bash scripts/jenkins-setup-ci-secrets.sh
+# Usage — lần đầu:
+#   cp scripts/jenkins-ci.env.example scripts/jenkins-ci.env  # CHỈ MỘT LẦN
+#   # sửa DOCKERHUB_TOKEN + GITHUB_PAT trong jenkins-ci.env
+#   bash scripts/jenkins-apply-ci-secrets.sh
 #
-# Hoặc: source scripts/jenkins-ci.env  (file local, không commit)
+# Sau reboot / Kind cluster lên lại (giữ nguyên jenkins-ci.env, KHÔNG cp example):
+#   bash scripts/jenkins-apply-ci-secrets.sh
+#   kubectl -n jenkins delete pod jenkins-management-0
 set -euo pipefail
 
 CTX="${JENKINS_KUBE_CONTEXT:-kind-management}"
