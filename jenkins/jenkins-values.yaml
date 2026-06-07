@@ -100,27 +100,17 @@ controller:
       01-app-pipeline-jobs: |
         jobs:
           - script: |
-              def apps = [
-                'go-micro-client',
-                'go-micro-order',
-                'go-micro-payment',
-                'go-micro-product',
-                'go-micro-inventory',
-                'go-micro-notification',
-              ]
-              apps.each { repo ->
-                pipelineJob(repo) {
-                  displayName(repo)
+              def seedAppJob = { String repoName ->
+                pipelineJob(repoName) {
+                  displayName(repoName)
                   description("App repo → buildService() via @Library go-micro-pipeline-lib. SCM poll (Kind lab).")
-                  triggers {
-                    scm('H/5 * * * *')
-                  }
+                  triggers { scm('H/5 * * * *') }
                   definition {
                     cpsScm {
                       scm {
                         git {
                           remote {
-                            url("https://github.com/minhtri1612/${repo}.git")
+                            url("https://github.com/minhtri1612/${repoName}.git")
                             credentials('github-go-micro-pat')
                           }
                           branch('*/main')
@@ -131,6 +121,12 @@ controller:
                   }
                 }
               }
+              seedAppJob('go-micro-client')
+              seedAppJob('go-micro-order')
+              seedAppJob('go-micro-payment')
+              seedAppJob('go-micro-product')
+              seedAppJob('go-micro-inventory')
+              seedAppJob('go-micro-notification')
       02-gitops-pipeline-job: |
         jobs:
           - script: |
