@@ -3,6 +3,7 @@ kubernetes
 workflow-aggregator
 pipeline-model-definition
 git
+github
 configuration-as-code
 job-dsl
 pipeline-stage-view

@@ -55,6 +55,7 @@ controller:
     - configuration-as-code
     - job-dsl
     - git
+    - github
     - pipeline-stage-view
     - blueocean
 
@@ -96,29 +97,37 @@ controller:
                       git:
                         remote: https://github.com/minhtri1612/go-micro-pipeline-lib.git
                         credentialsId: github-go-micro-pat
-      01-github-pipeline-job: |
+      01-app-pipeline-jobs: |
         jobs:
           - script: |
-              pipelineJob('go-micro') {
-                displayName('go-micro (GitHub)')
-                parameters {
-                  choiceParam('PIPELINE_SCOPE', ['auto', 'build-only', 'build-and-full', 'full', 'dependency-only', 'business-only', 'route-smoke-only', 'load-only'], 'auto = detect: env/ → test; *-service/ → build 1 service + test')
-                  choiceParam('BUILD_SERVICES', ['auto', 'all', 'product', 'inventory', 'order', 'payment', 'noti', 'client'], 'auto = chỉ service đổi trong commit')
-                  booleanParam('PUSH_GIT', true)
-                  booleanParam('DEPLOY_EXISTING_ENV_TAGS', false)
-                }
-                triggers { scm('H/5 * * * *') }
-                definition {
-                  cpsScm {
-                    scm {
-                      git {
-                        remote {
-                          url('https://github.com/minhtri1612/go-micro.git')
+              def apps = [
+                'go-micro-client',
+                'go-micro-order',
+                'go-micro-payment',
+                'go-micro-product',
+                'go-micro-inventory',
+                'go-micro-notification',
+              ]
+              apps.each { repo ->
+                pipelineJob(repo) {
+                  displayName(repo)
+                  description("App repo pipeline — webhook GitHub push → buildService (Shared Library)")
+                  triggers {
+                    githubPush()
+                  }
+                  definition {
+                    cpsScm {
+                      scm {
+                        git {
+                          remote {
+                            url("https://github.com/minhtri1612/${repo}.git")
+                            credentialsId('github-go-micro-pat')
+                          }
+                          branch('*/main')
                         }
-                        branch('*/main')
                       }
+                      scriptPath('Jenkinsfile')
                     }
-                    scriptPath('Jenkinsfile')
                   }
                 }
               }
