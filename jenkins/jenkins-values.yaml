@@ -2,7 +2,9 @@
 # - 6 job app: SCM → go-micro-{service}.git + Jenkinsfile → buildService()
 # - 1 job gitops: SCM → go-micro-gitops.git + Jenkinsfile → gitopsPipeline()
 # - Shared Library: go-micro-pipeline-lib@main
-# Kind lab: SCM poll (H/5) — không cần GitHub webhook / plugin github.
+# Trigger: Build Now (manual) HOẶC git push → GitHub webhook (githubPush).
+#   Mỗi job chỉ listen repo của nó — push order không chạy client.
+#   Kind: expose Jenkins (ngrok/cloudflare) + webhook URL .../github-webhook/ trên từng GitHub repo.
 controller:
   image:
     repository: minhtri1612/jenkins-custom
@@ -57,6 +59,7 @@ controller:
     - configuration-as-code
     - job-dsl
     - git
+    - github
     - pipeline-stage-view
     - blueocean
 
@@ -102,8 +105,8 @@ controller:
           - script: |
               pipelineJob('go-micro-client') {
                 displayName('go-micro-client')
-                description('App repo → buildService(client). SCM poll (Kind lab).')
-                triggers { scm('H/5 * * * *') }
+                description('App repo → buildService(client). Trigger: Build Now hoặc push go-micro-client.')
+                triggers { githubPush() }
                 definition {
                   cpsScm {
                     scm {
@@ -121,8 +124,8 @@ controller:
               }
               pipelineJob('go-micro-order') {
                 displayName('go-micro-order')
-                description('App repo → buildService(order). SCM poll (Kind lab).')
-                triggers { scm('H/5 * * * *') }
+                description('App repo → buildService(order). Trigger: Build Now hoặc push go-micro-order.')
+                triggers { githubPush() }
                 definition {
                   cpsScm {
                     scm {
@@ -140,8 +143,8 @@ controller:
               }
               pipelineJob('go-micro-payment') {
                 displayName('go-micro-payment')
-                description('App repo → buildService(payment). SCM poll (Kind lab).')
-                triggers { scm('H/5 * * * *') }
+                description('App repo → buildService(payment). Trigger: Build Now hoặc push go-micro-payment.')
+                triggers { githubPush() }
                 definition {
                   cpsScm {
                     scm {
@@ -159,8 +162,8 @@ controller:
               }
               pipelineJob('go-micro-product') {
                 displayName('go-micro-product')
-                description('App repo → buildService(product). SCM poll (Kind lab).')
-                triggers { scm('H/5 * * * *') }
+                description('App repo → buildService(product). Trigger: Build Now hoặc push go-micro-product.')
+                triggers { githubPush() }
                 definition {
                   cpsScm {
                     scm {
@@ -178,8 +181,8 @@ controller:
               }
               pipelineJob('go-micro-inventory') {
                 displayName('go-micro-inventory')
-                description('App repo → buildService(inventory). SCM poll (Kind lab).')
-                triggers { scm('H/5 * * * *') }
+                description('App repo → buildService(inventory). Trigger: Build Now hoặc push go-micro-inventory.')
+                triggers { githubPush() }
                 definition {
                   cpsScm {
                     scm {
@@ -197,8 +200,8 @@ controller:
               }
               pipelineJob('go-micro-notification') {
                 displayName('go-micro-notification')
-                description('App repo → buildService(noti). SCM poll (Kind lab).')
-                triggers { scm('H/5 * * * *') }
+                description('App repo → buildService(noti). Trigger: Build Now hoặc push go-micro-notification.')
+                triggers { githubPush() }
                 definition {
                   cpsScm {
                     scm {
@@ -219,10 +222,8 @@ controller:
           - script: |
               pipelineJob('go-micro-gitops') {
                 displayName('go-micro-gitops')
-                description('GitOps repo → gitopsPipeline(): env/ test+promote, rollback. SCM poll (Kind lab).')
-                triggers {
-                  scm('H/5 * * * *')
-                }
+                description('GitOps repo → gitopsPipeline(). Trigger: Build Now hoặc push go-micro-gitops.')
+                triggers { githubPush() }
                 definition {
                   cpsScm {
                     scm {
