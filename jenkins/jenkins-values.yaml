@@ -1,5 +1,6 @@
 # Multi-repo Jenkins (JCasC Job DSL)
-# - 6 job app: SCM → go-micro-{service}.git + Jenkinsfile → buildService()
+# - go-micro-order: multibranch (PR → buildServicePr, main → buildService)
+# - 5 app job khác: pipelineJob main-only (rollout multibranch sau)
 # - 1 job gitops: SCM → go-micro-gitops.git + Jenkinsfile → gitopsPipeline()
 # - Shared Library: go-micro-pipeline-lib@main
 # Trigger: Build Now (manual) HOẶC git push → GitHub webhook (githubPush).
@@ -60,6 +61,8 @@ controller:
     - job-dsl
     - git
     - github
+    - github-branch-source
+    - workflow-multibranch
     - pipeline-stage-view
     - blueocean
 
@@ -113,25 +116,6 @@ controller:
                       git {
                         remote {
                           url('https://github.com/minhtri1612/go-micro-client.git')
-                          credentials('github-go-micro-pat')
-                        }
-                        branch('*/main')
-                      }
-                    }
-                    scriptPath('Jenkinsfile')
-                  }
-                }
-              }
-              pipelineJob('go-micro-order') {
-                displayName('go-micro-order')
-                description('App repo → buildService(order). Trigger: Build Now hoặc push go-micro-order.')
-                triggers { githubPush() }
-                definition {
-                  cpsScm {
-                    scm {
-                      git {
-                        remote {
-                          url('https://github.com/minhtri1612/go-micro-order.git')
                           credentials('github-go-micro-pat')
                         }
                         branch('*/main')
@@ -214,6 +198,52 @@ controller:
                       }
                     }
                     scriptPath('Jenkinsfile')
+                  }
+                }
+              }
+      01b-order-multibranch: |
+        jobs:
+          - script: |
+              multibranchPipelineJob('go-micro-order') {
+                displayName('go-micro-order')
+                description('Multibranch pilot: PR/feature → buildServicePr; main → buildService. Webhook hoặc Scan folder.')
+                branchSources {
+                  branchSource {
+                    source {
+                      github {
+                        id('go-micro-order-github')
+                        scanCredentialsId('github-go-micro-pat')
+                        repoOwner('minhtri1612')
+                        repository('go-micro-order')
+                        traits {
+                          gitHubBranchDiscovery {
+                            strategyId(3)
+                          }
+                          gitHubPullRequestDiscovery {
+                            strategyId(1)
+                          }
+                          headWildcardFilter {
+                            includes('main PR-* feature/* fix/*')
+                            excludes('')
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                factory {
+                  workflowBranchProjectFactory {
+                    scriptPath('Jenkinsfile')
+                  }
+                }
+                orphanedItemStrategy {
+                  discardOldItems {
+                    numToKeep(15)
+                  }
+                }
+                triggers {
+                  periodicFolderTrigger {
+                    interval('30m')
                   }
                 }
               }
