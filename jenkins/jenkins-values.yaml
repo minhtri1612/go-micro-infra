@@ -84,6 +84,18 @@ controller:
   JCasC:
     defaultConfig: true
     configScripts:
+      00-global-library: |
+        unclassified:
+          globalLibraries:
+            libraries:
+              - name: go-micro-pipeline-lib
+                defaultVersion: main
+                retriever:
+                  modernSCM:
+                    scm:
+                      git:
+                        remote: https://github.com/minhtri1612/go-micro-pipeline-lib.git
+                        credentialsId: github-go-micro-pat
       01-github-pipeline-job: |
         jobs:
           - script: |
