@@ -1,12 +1,12 @@
 # Jenkins controller có plugin đóng gói sẵn — cluster không cần init tải plugin mỗi lần pod lên.
 # Build & push Hub (chạy từ ROOT repo go-micro):
-#   docker build -t minhtri1612/jenkins-custom:2.492.3-lts-jdk17-pkg7 -f jenkins/Dockerfile jenkins
+#   docker build -t minhtri1612/jenkins-custom:2.504.1-lts-jdk17-pkg1 -f jenkins/Dockerfile jenkins
 # Hoặc đã cd vào thư mục jenkins/:
-#   docker build -t minhtri1612/jenkins-custom:2.492.3-lts-jdk17-pkg6 -f Dockerfile .
-#   docker push minhtri1612/jenkins-custom:2.492.3-lts-jdk17-pkg6
-# Kind (không qua Hub): kind load docker-image minhtri1612/jenkins-custom:2.492.3-lts-jdk17-pkg6 --name <cluster>
-# Core LTS đủ cho transitive plugins hiện tại (json-api/gson-api… đòi Jenkins ≥ ~2.492).
-FROM jenkins/jenkins:2.492.3-lts-jdk17
+#   docker build -t minhtri1612/jenkins-custom:2.504.1-lts-jdk17-pkg1 -f Dockerfile .
+#   docker push minhtri1612/jenkins-custom:2.504.1-lts-jdk17-pkg1
+# Kind (không qua Hub): kind load docker-image minhtri1612/jenkins-custom:2.504.1-lts-jdk17-pkg1 --name management
+# Core LTS ≥ 2.504.1 (configuration-as-code + kubernetes plugin trên Update Center hiện tại).
+FROM jenkins/jenkins:2.504.1-lts-jdk17
 
 USER root
 

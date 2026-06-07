@@ -3,7 +3,7 @@
 controller:
   image:
     repository: minhtri1612/jenkins-custom
-    tag: "2.492.3-lts-jdk17-pkg7"
+    tag: "2.504.1-lts-jdk17-pkg1"
     pullPolicy: IfNotPresent
 
   # Chart mặc định pod runAsNonRoot:true → dockerd trong dind không chạy được (Argo Progressing mãi).

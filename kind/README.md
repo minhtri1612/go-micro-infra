@@ -116,7 +116,7 @@ bash scripts/jenkins-generate-internal-kubeconfig.sh
 cp scripts/jenkins-ci.env.example scripts/jenkins-ci.env
 # Sửa: DOCKERHUB_TOKEN = Hub Access Token; GITHUB_PAT = GitHub PAT
 source scripts/jenkins-ci.env && bash scripts/jenkins-setup-ci-secrets.sh
-
+cd ../go-micro-gitops
 kubectl apply -f argocd/bootstrap/22-jenkins-mgmt.yaml
 argocd --grpc-web app sync jenkins-management && argocd --grpc-web app wait jenkins-management --sync --timeout 300
 kubectl -n jenkins get svc,pods
@@ -154,7 +154,7 @@ kubectl -n jenkins logs jenkins-management-0 -c init --previous --tail=100
 
 Nếu vẫn crash: xem `describe` dòng **Last State: OOMKilled** — tăng `controller.initContainerResources` trong `jenkins/jenkins-values.yaml` (repo đã set sẵn limit RAM cho init).
 
-Hay gặp: **version plugin không khớp image/chart** → init `jenkins-plugin-cli` fail (log kiểu `requires a greater version of Jenkins (2.479.x)`). Tăng **`controller.image.tag`** trong `jenkins/jenkins-values.yaml` cho ≥ version đó (repo đang pin **`2.479.3-lts-jdk17`** với chart `5.1.20`). Sau khi push + sync, xem `describe pod` / Events: nếu init vẫn **Pulling `jenkins:2.452.1-*`** thì pod cũ chưa lên spec mới — `kubectl -n jenkins delete pod jenkins-management-0 --wait=false` rồi đợi pod mới (init phải dùng cùng tag với main container). Vẫn CrashLoop / volume hỏng: xóa PVC `jenkins-management` trong `jenkins` (**mất home Jenkins**) rồi để Argo tạo lại.
+Hay gặp: **version plugin không khớp image/chart** → init `jenkins-plugin-cli` fail (log kiểu `requires a greater version of Jenkins (2.504.x)`). Tăng **`controller.image.tag`** trong `jenkins/jenkins-values.yaml` + rebuild/push image custom (repo đang pin **`2.504.1-lts-jdk17-pkg1`** với chart `5.1.20`). Sau khi push + sync, xem `describe pod` / Events: nếu init vẫn **Pulling tag cũ** thì pod cũ chưa lên spec mới — `kubectl -n jenkins delete pod jenkins-management-0 --wait=false` rồi đợi pod mới (init phải dùng cùng tag với main container). Vẫn CrashLoop / volume hỏng: xóa PVC `jenkins-management` trong `jenkins` (**mất home Jenkins**) rồi để Argo tạo lại.
 
 **`app wait --health`**: Argo chỉ Healthy khi StatefulSet xong; Jenkins + plugin có thể Progressing lâu — đừng hard-code expect Healthy trong vài phút.
 
