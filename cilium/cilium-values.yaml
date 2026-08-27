@@ -1,0 +1,87 @@
+kubeProxyReplacement: true
+devices: "eth0"
+
+# Spoke (dev/staging/prod): bật clustermesh-apiserver để management có endpoint remote thật
+# (NodePort trên mỗi spoke) trong mô hình GitOps declarative.
+clustermesh:
+  useAPIServer: true
+  apiserver:
+    replicas: 1
+    tls:
+      server:
+        extraDnsNames:
+          - "*.mesh.cilium.io"
+
+# L7 qua Envoy: cần cho HTTP/DNS chi tiết trên flow khi traffic đi qua proxy L7 (Gateway/L7 policy).
+l7Proxy: true
+
+loadBalancer:
+  algorithm: maglev
+
+# Phải khớp hub (cilium-values-management.yaml): ClusterMesh không ổn định khi hub tắt encryption mà spoke bật WireGuard.
+encryption:
+  enabled: false
+
+# BPF events → monitor/Hubble (drop / policy verdict / trace). Bật rõ ràng để debug policy trên UI.
+bpf:
+  lbExternalClusterIP: true
+  events:
+    drop:
+      enabled: true
+    policyVerdict:
+      enabled: true
+    trace:
+      enabled: true
+
+# Hubble UI: Service map + flow table. Không thể bật “policy simulation” hay dashboard SRE (latency/5xx)
+# trong chính Hubble UI — các phần đó là cilium policy trace / Grafana + Prometheus.
+hubble:
+  enabled: true
+  # Buffer flow gần đây (giá trị hợp lệ theo chart Cilium).
+  eventBufferCapacity: "16383"
+  # Gắn flow with CiliumNetworkPolicy (egress_allowed_by / ingress_denied_by) in UI.
+  networkPolicyCorrelation:
+    enabled: true
+  # false = keep max L7 detail in UI; enable redact to hide PII.
+  redact:
+    enabled: false
+  # Some flow event from strange cgroup; false = show extra (may be noisy).
+  skipUnknownCGroupIDs: false
+  relay:
+    enabled: true
+  # UI workload: enable + specific NodePort in cilium-cluster-{dev,staging,prod}.yaml (31201–31203).
+  # Management: cilium-values-management.yaml (UI ClusterIP / port-forward 12000).
+  ui:
+    enabled: false
+  metrics:
+    # https://docs.cilium.io/en/stable/observability/metrics/#hubble-metrics
+    enabled:
+      - dns:query
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
+      - port-distribution
+    enableOpenMetrics: true
+    serviceMonitor:
+      enabled: true
+    # Dashboard JSON Grafana: ConfigMap created on cluster with Cilium (workload). Your Grafana
+    # runs on management → not auto-imported; enable true if you have local Grafana too.
+    dashboards:
+      enabled: false
+
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    # Argo compare: cluster already has ServiceMonitor CRD after sync kube-prometheus-stack (monitoring-*).
+    trustCRDsExist: true
+
+operator:
+  # Kind usually 1 node: default chart or old version may have 2 replicas + hostPort → pod 2 Pending ("free ports") → Argo Degraded.
+  replicas: 1
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true

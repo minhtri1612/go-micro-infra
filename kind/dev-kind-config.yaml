@@ -1,0 +1,15 @@
+# Kind cluster: dev
+# API server bound to 127.0.0.1:30443 (avoid kubeconfig https://0.0.0.0 which breaks TLS).
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  apiServerAddress: "127.0.0.1"
+  apiServerPort: 30443
+  # Không dùng disableDefaultCNI: kindnet chạy mặc định → node Ready ngay → monitoring pod
+  # schedule được → CRD ServiceMonitor có mặt → Cilium sync sau không bị deadlock.
+  podSubnet: 10.201.0.0/16
+  serviceSubnet: 10.221.0.0/16
+
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.28.0

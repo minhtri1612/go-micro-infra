@@ -1,0 +1,28 @@
+# Overlay Argo: cilium-dev (cluster mesh spoke)
+cluster:
+  name: dev
+  id: 2
+
+ipam:
+  mode: cluster-pool
+  operator:
+    clusterPoolIPv4PodCIDRList:
+      - "10.201.0.0/16"
+    clusterPoolIPv4MaskSize: 24
+
+# Hubble UI: NodePort cố định — từ host Kind: http://<IP dev-control-plane>:31201
+hubble:
+  ui:
+    enabled: true
+    service:
+      type: NodePort
+      nodePort: 31201
+
+clustermesh:
+  config:
+    enabled: true
+  apiserver:
+    service:
+      type: LoadBalancer
+      annotations:
+        metallb.universe.tf/loadBalancerIPs: "172.18.255.11"

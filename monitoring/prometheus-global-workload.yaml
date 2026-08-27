@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-global
+  namespace: monitoring
+  annotations:
+    io.cilium/global-service: "true"
+    io.cilium/shared-service: "true"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: 9090
+  # Không có selector ở cụm workload vì Pod nằm ở cụm Management

@@ -1,0 +1,38 @@
+# Management: Prometheus đầy đủ + Grafana; nhận remote_write từ agent trên workload (NodePort 32090).
+# Workload: monitoring-workload.yaml + monitoring-workload-labels-<env>.yaml (externalLabels cluster/environment).
+#
+# Grafana: một datasource Prometheus trỏ in-cluster; filter theo label, ví dụ:
+#   sum(rate(container_cpu_usage_seconds_total{cluster="dev"}[5m]))
+#   hoặc biến dashboard: label_values(up, cluster)
+
+grafana:
+  adminPassword: "admin"
+  enabled: true
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+  service:
+    type: NodePort
+    nodePort: 32000
+
+prometheus:
+  enabled: true
+  # Expose for cross-cluster Rollouts analysis; IP in config/env/*.yaml = mgmt control-plane on kind network.
+  service:
+    type: NodePort
+    nodePort: 32090
+    port: 9090
+  prometheusSpec:
+    retention: 1d
+    storageSpec:
+      emptyDir:
+        medium: ""
+    # Nhận remote_write từ Prometheus Agent trên dev/staging/prod (cổng Service NodePort 32090).
+    enableRemoteWriteReceiver: true
+
+# Disable components that we don't need for management
+alertmanager:
+  enabled: false

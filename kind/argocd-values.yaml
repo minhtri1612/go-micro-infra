@@ -1,0 +1,27 @@
+repoServer:
+  networkPolicy:
+    create: false
+
+controller:
+  networkPolicy:
+    create: false
+
+server:
+  networkPolicy:
+    create: false
+
+applicationSet:
+  networkPolicy:
+    create: false
+
+notifications:
+  networkPolicy:
+    create: false
+
+redis:
+  networkPolicy:
+    create: false
+
+configs:
+  params:
+    reposerver.metrics.listen.address: "0.0.0.0"
