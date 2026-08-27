@@ -4,18 +4,18 @@ Chạy theo đúng thứ tự bên dưới để recreate lab sau reboot, theo c
 
 ## 0) Preconditions
 
-- Repo: `~/Downloads/go-micro`
-- Contexts dùng: `kind-management`, `kind-dev`, `kind-prod`
-- Máy chạy: **Ubuntu server / EC2 / VPS Linux riêng**
-- Tool cần có sẵn: `docker`, `kind`, `kubectl`, `helm`, `argocd`, `cilium`
+- Multi-repo: clone **`go-micro-infra`** (Kind/scripts) + **`go-micro-gitops`** (Argo bootstrap/apps)
+- Contexts: `kind-management`, `kind-dev`, `kind-prod`
+- Máy Kind: **Ubuntu / EC2**; **Jenkins CI = VPS riêng** (không trong Kind)
+- Tool: `docker`, `kind`, `kubectl`, `helm`, `argocd`, `cilium`
 
 > [!TIP]
-> Neu tao EC2 bang stack trong `terraform/`, host da tu cai san `docker`, `kubectl`, `helm`, `kind`, `argocd`, `cilium`.
-> SSH vao may roi chay:
+> Neu tao EC2 bang stack trong `terraform/`, host da tu cai san tool. SSH vao may roi:
 > ```bash
 > go-micro-check-tools
-> git clone https://github.com/minhtri1612/go-micro.git ~/go-micro
-> cd ~/go-micro
+> git clone https://github.com/minhtri1612/go-micro-infra.git ~/go-micro-infra
+> git clone https://github.com/minhtri1612/go-micro-gitops.git ~/go-micro-gitops
+> cd ~/go-micro-infra
 > bash scripts/bootstrap-ubuntu-ec2-kind.sh
 > ```
 
@@ -110,77 +110,36 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 argocd --grpc-web account get-user-info
 ```
 
-### 2.1) Jenkins (management, tuỳ chọn)
+### 2.1) Jenkins — chạy trên VPS (không deploy vào Kind/Argo)
 
-Application: `argocd/bootstrap/22-jenkins-mgmt.yaml` → Service **`jenkins-management`** (không phải `jenkins`). Chưa có MetalLB thì `EXTERNAL-IP` trống là **bình thường** — dùng port-forward.
+Multi-repo layout: **Jenkins master trên VPS**, không còn Application `jenkins-management` / `(removed — Jenkins on VPS)`.
 
-**Chỉ để mở UI trên laptop (đừng nhầm cổng):**
+| Thành phần | Repo / chỗ |
+|------------|------------|
+| Shared Library | `go-micro-pipeline-lib` → Global Library name `go-micro-ci` |
+| Service pipelines | mỗi repo `go-micro-*` có Jenkinsfile mỏng |
+| Desired state (tags) | `go-micro-gitops` (`env/*.yaml`) — Argo sync |
+| Cluster Kind + platform values | `go-micro-infra` (repo này) |
 
-| Công cụ | URL trong trình duyệt | `port-forward` (ví dụ) |
-|--------|-------------------------|-------------------------|
-| **Argo CD** | **`http://localhost:18080`** | `18080:443` |
-| **Jenkins** | **`http://localhost:18081`** | `18081:8080` |
+**VPS Jenkins cần:**
 
-**Jenkins không bao giờ mở bằng `localhost:8080`** — trên server này **8080 đã có service khác dùng**, còn Argo của lab dùng **`localhost:18080`**. Phần **`18081:8080`** nghĩa là: máy bạn dùng cổng **18081**, còn số **8080** sau dấu hai chấm là **cổng của Jenkins trong cluster** (target của Service), không phải URL trên Chrome. Debug **bên trong pod** Jenkins (không phải trình duyệt) khi đó mới gọi process Jenkins qua cổng **8080** trong container.
+1. Docker (build/push image) + `kubectl` + (tuỳ) `kubectl argo rollouts`
+2. Credentials: Docker Hub, GitHub PAT (push `go-micro-gitops`), kubeconfig contexts (`kind-dev`, …)
+3. Global Pipeline Library → SCM `https://github.com/minhtri1612/go-micro-pipeline-lib.git` (Library path trống)
+4. Một Pipeline job / service repo (webhook GitHub), `scriptPath: Jenkinsfile`
 
-**Mật khẩu đăng nhập Jenkins (port 18081 trên máy):** Cổng **18081 chỉ là port-forward** — **không “nằm ở” 18081, cũng không lưu password ở đó.** Lấy pass từ Secret **`jenkins-management`** / key **`jenkins-admin-password`** (lệnh trong block dưới). User: **`admin`**. Pass hiển thị trong Secret **có thể không khớp** PVC nếu đã đổi pass trên UI hoặc home cũ — xem khối **“Đăng nhập vẫn báo sai…”** ngay sau block bash.
+**Argo CD** vẫn mở bằng port-forward `localhost:18080` như mục trên. Không cần `localhost:18081` cho Jenkins-in-cluster nữa.
 
-Job mẫu **go-micro** (kết nối GitHub) được khai báo bằng **JCasC + Job DSL** trong `jenkins/jenkins-values.yaml` (`configScripts`); pipeline thật nằm ở **`Jenkinsfile`** ở root repo. Repo **private** cần thêm **credentials** trong JCasC + `remote { credentials('id') }` (không commit token).
+Folder `jenkins/` trong repo này chỉ còn **tham chiếu lịch sử** (Helm values cũ) — **không** apply vào Kind.
 
-> [!IMPORTANT]
-> **Bắt buộc** trước khi deploy/sync Jenkins:
-> 1. Secret `jenkins-internal-kubeconfig` (kubeconfig)
-> 2. Secret `jenkins-ci-env` (Docker Hub + GitHub PAT cho pipeline — **không** dùng AWS key ESO)
-
-```bash
-kubectl config use-context kind-management
-bash scripts/jenkins-generate-internal-kubeconfig.sh
-
-# CI credentials (KHÁC ESO aws-credentials — xem scripts/jenkins-ci.env.example)
-cp scripts/jenkins-ci.env.example scripts/jenkins-ci.env
-# Sửa: DOCKERHUB_TOKEN = Hub Access Token; GITHUB_PAT = GitHub PAT
-source scripts/jenkins-ci.env && bash scripts/jenkins-setup-ci-secrets.sh
-
-kubectl apply -f argocd/bootstrap/22-jenkins-mgmt.yaml
-argocd --grpc-web app sync jenkins-management && argocd --grpc-web app wait jenkins-management --sync --timeout 300
-kubectl -n jenkins get svc,pods
-# Jenkins: cổng máy 18081 (tránh đụng Argo 18080 và service sẵn có trên server). Đăng nhập user admin + password lệnh dưới.
-kubectl -n jenkins port-forward svc/jenkins-management 18081:8080
-kubectl -n jenkins get secret jenkins-management -o jsonpath='{.data.jenkins-admin-password}' | base64 -d && echo
-```
-
-
-**Đăng nhập vẫn báo sai dù đã decode Secret đúng:** Jenkins không đọc pass trực tiếp từ Secret mỗi lần đăng nhập — pass thật nằm trong **`/var/jenkins_home`** (PVC). Secret chỉ khớp **lần khởi tạo đầu** (hoặc khi home trống). PVC cũ / đã đổi pass trên UI → hash trong PVC **lệch** Secret → decode Secret **không** vào được.
-
-**Cách làm sạch lab (xóa home Jenkins — mất job/config trên volume):** scale StatefulSet về 0, xóa PVC, bật lại pod; bootstrap lại dùng pass trong Secret hiện tại.
-
-Sau khi **xóa PVC**, init `jenkins-plugin-cli` tải lại toàn bộ plugin — trên Kind thường **15–30 phút** mới **Ready 2/2** (10 phút vẫn bình thường nếu vẫn `Init:0/1` / `0/2`). **Đừng dùng `wait --timeout=600s`** rồi tưởng hỏng; tăng timeout hoặc `get pods -w` tới khi **2/2 Running**.
+Nếu cluster còn app Jenkins cũ:
 
 ```bash
-kubectl -n jenkins scale statefulset jenkins-management --replicas=0
-kubectl -n jenkins wait --for=delete pod/jenkins-management-0 --timeout=180s
-kubectl -n jenkins delete pvc jenkins-management
-kubectl -n jenkins scale statefulset jenkins-management --replicas=1
-# Chờ Ready tối đa 40 phút (lần đầu sau wipe hay lâu hơn 10p):
-kubectl -n jenkins wait --for=condition=ready pod/jenkins-management-0 --timeout=2400s
-# Hoặc bỏ dòng wait, tự theo dõi:  kubectl -n jenkins get pods -w
-kubectl -n jenkins get secret jenkins-management -o jsonpath='{.data.jenkins-admin-password}' | base64 -d && echo   # pass cho http://localhost:18081 — user admin
+argocd --grpc-web app delete jenkins-management --cascade
+# hoặc
+kubectl -n argocd delete application jenkins-management --ignore-not-found
+kubectl delete ns jenkins --ignore-not-found
 ```
-
-Pod **`Init:CrashLoopBackOff`**: thường do init tên **`init`** (cài plugin). Chart còn init **`config-reload-init`** (sidecar) — **không dùng `initContainers[0]`** (sẽ lộn sang sidecar, log sẽ là JSON “Starting collector”).
-
-```bash
-kubectl -n jenkins describe pod jenkins-management-0 | tail -50
-kubectl -n jenkins logs jenkins-management-0 -c init --tail=100
-kubectl -n jenkins logs jenkins-management-0 -c init --previous --tail=100
-# --previous lỗi "not found" nếu sidecar chưa từng terminate — bỏ qua, chỉ cần -c init
-```
-
-Nếu vẫn crash: xem `describe` dòng **Last State: OOMKilled** — tăng `controller.initContainerResources` trong `jenkins/jenkins-values.yaml` (repo đã set sẵn limit RAM cho init).
-
-Hay gặp: **version plugin không khớp image/chart** → init `jenkins-plugin-cli` fail (log kiểu `requires a greater version of Jenkins (2.479.x)`). Tăng **`controller.image.tag`** trong `jenkins/jenkins-values.yaml` cho ≥ version đó (repo đang pin **`2.479.3-lts-jdk17`** với chart `5.1.20`). Sau khi push + sync, xem `describe pod` / Events: nếu init vẫn **Pulling `jenkins:2.452.1-*`** thì pod cũ chưa lên spec mới — `kubectl -n jenkins delete pod jenkins-management-0 --wait=false` rồi đợi pod mới (init phải dùng cùng tag với main container). Vẫn CrashLoop / volume hỏng: xóa PVC `jenkins-management` trong `jenkins` (**mất home Jenkins**) rồi để Argo tạo lại.
-
-**`app wait --health`**: Argo chỉ Healthy khi StatefulSet xong; Jenkins + plugin có thể Progressing lâu — đừng hard-code expect Healthy trong vài phút.
 
 ### 2.2) ArgoCD Rollout UI Extension (xem % traffic ngay trên Argo UI)
 
@@ -282,30 +241,32 @@ kubectl label secret cluster-prod -n argocd argocd.argoproj.io/secret-type=clust
 
 ```bash
 kubectl config use-context kind-management
-cd ~/Downloads/go-micro
+GITOPS=~/go-micro-gitops
+INFRA=~/go-micro-infra
 
-# repos
-argocd repo add https://github.com/minhtri1612/go-micro.git || true
+# repos (apps + platform values; no Jenkins chart — CI on VPS)
+argocd repo add https://github.com/minhtri1612/go-micro-gitops.git || true
+argocd repo add https://github.com/minhtri1612/go-micro-infra.git || true
 argocd repo add https://argoproj.github.io/argo-helm --type helm --name argo-helm || true
 argocd repo add https://metallb.github.io/metallb --type helm --name metallb || true
 argocd repo add https://helm.cilium.io/ --type helm --name cilium || true
 argocd repo add https://helm.traefik.io/traefik --type helm --name traefik || true
-argocd repo add https://charts.jenkins.io --type helm --name jenkins || true
+argocd repo add https://prometheus-community.github.io/helm-charts --type helm --name prometheus-community || true
 
-# projects first
-kubectl apply -f argocd/bootstrap/01-projects.yaml
+# projects first (manifests live in gitops)
+kubectl apply -f "$GITOPS/argocd/bootstrap/01-projects.yaml"
 argocd --grpc-web app sync argocd-projects
 argocd proj list
 sleep 3
 
 # management monitoring first (CRDs baseline)
-kubectl apply -f argocd/bootstrap/05-monitoring-mgmt.yaml
+kubectl apply -f "$GITOPS/argocd/bootstrap/05-monitoring-mgmt.yaml"
 argocd --grpc-web app sync monitoring-management
 argocd --grpc-web app wait monitoring-management --health --sync --timeout 300
 
 # workload monitoring
-kubectl apply -f argocd/bootstrap/06-monitoring-dev.yaml
-kubectl apply -f argocd/bootstrap/08-monitoring-prod.yaml
+kubectl apply -f "$GITOPS/argocd/bootstrap/06-monitoring-dev.yaml"
+kubectl apply -f "$GITOPS/argocd/bootstrap/08-monitoring-prod.yaml"
 argocd --grpc-web app terminate-op monitoring-dev || true
 argocd --grpc-web app terminate-op monitoring-prod || true
 argocd --grpc-web app sync monitoring-dev
@@ -331,8 +292,8 @@ argocd --grpc-web app sync monitoring-prod
 # cilium workload
 
 # cilium workload
-kubectl apply -f argocd/bootstrap/09-cilium-dev.yaml
-kubectl apply -f argocd/bootstrap/11-cilium-prod.yaml
+kubectl apply -f "$GITOPS/argocd/bootstrap/09-cilium-dev.yaml"
+kubectl apply -f "$GITOPS/argocd/bootstrap/11-cilium-prod.yaml"
 sleep 3
 argocd --grpc-web app terminate-op cilium-dev || true
 argocd --grpc-web app terminate-op cilium-prod || true
@@ -340,13 +301,13 @@ argocd --grpc-web app sync cilium-dev
 argocd --grpc-web app sync cilium-prod
 
 # cilium management
-kubectl apply -f argocd/bootstrap/18-cilium-management.yaml
+kubectl apply -f "$GITOPS/argocd/bootstrap/18-cilium-management.yaml"
 argocd --grpc-web app sync cilium-management
 
 # metallb
-kubectl apply -f argocd/bootstrap/15-metallb-dev.yaml
-kubectl apply -f argocd/bootstrap/17-metallb-prod.yaml
-kubectl apply -f argocd/bootstrap/18-metallb-management.yaml
+kubectl apply -f "$GITOPS/argocd/bootstrap/15-metallb-dev.yaml"
+kubectl apply -f "$GITOPS/argocd/bootstrap/17-metallb-prod.yaml"
+kubectl apply -f "$GITOPS/argocd/bootstrap/18-metallb-management.yaml"
 argocd --grpc-web app sync metallb-management
 argocd --grpc-web app sync metallb-dev
 argocd --grpc-web app sync metallb-prod
@@ -364,18 +325,18 @@ argocd --grpc-web app wait cilium-prod --health --sync --timeout 300
 
 
 # rollouts + traefik
-kubectl apply -f argocd/bootstrap/12-argo-rollouts-dev.yaml
-kubectl apply -f argocd/bootstrap/14-argo-rollouts-prod.yaml
-kubectl apply -f argocd/bootstrap/19-traefik-dev.yaml
-kubectl apply -f argocd/bootstrap/21-traefik-prod.yaml
+kubectl apply -f "$GITOPS/argocd/bootstrap/12-argo-rollouts-dev.yaml"
+kubectl apply -f "$GITOPS/argocd/bootstrap/14-argo-rollouts-prod.yaml"
+kubectl apply -f "$GITOPS/argocd/bootstrap/19-traefik-dev.yaml"
+kubectl apply -f "$GITOPS/argocd/bootstrap/21-traefik-prod.yaml"
 argocd --grpc-web app sync argo-rollouts-dev
 argocd --grpc-web app sync argo-rollouts-prod
 argocd --grpc-web app sync traefik-dev
 argocd --grpc-web app sync traefik-prod
 
 # microservices stacks
-kubectl apply -f argocd/bootstrap/02-dev-microservices-stack.yaml
-kubectl apply -f argocd/bootstrap/04-prod-microservices-stack.yaml
+kubectl apply -f "$GITOPS/argocd/bootstrap/02-dev-microservices-stack.yaml"
+kubectl apply -f "$GITOPS/argocd/bootstrap/04-prod-microservices-stack.yaml"
 argocd --grpc-web app sync dev-microservices
 argocd --grpc-web app sync prod-microservices
 ```

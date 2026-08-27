@@ -1,0 +1,6 @@
+# Traefik routing uses native Argo Rollouts integration (trafficRouting.traefik).
+# Configure Traefik CRD API group/version explicitly for rollouts controller.
+controller:
+  extraArgs:
+    - --traefik-api-group=traefik.io
+    - --traefik-api-version=traefik.io/v1alpha1
