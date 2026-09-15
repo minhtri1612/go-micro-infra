@@ -1,0 +1,26 @@
+# Jenkins CI server. Chạy trên EC2/VPS riêng — không phải Kind.
+# user root: docker.sock trên host (lab). Không phải mô hình Kubernetes agent.
+services:
+  jenkins:
+    build: .
+    image: go-micro-jenkins:local
+    user: root
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      CASC_JENKINS_CONFIG: /var/jenkins_home/casc_configs
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
+      JENKINS_URL: ${JENKINS_URL:-http://localhost:8080/}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?set in .env}
+      DOCKERHUB_USER: ${DOCKERHUB_USER:?set in .env}
+      DOCKERHUB_TOKEN: ${DOCKERHUB_TOKEN:?set in .env}
+      GITHUB_USER: ${GITHUB_USER:?set in .env}
+      GITHUB_PAT: ${GITHUB_PAT:?set in .env}
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - ./casc:/var/jenkins_home/casc_configs:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  jenkins_home:
