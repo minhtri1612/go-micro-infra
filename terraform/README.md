@@ -93,8 +93,8 @@ Chạy `output` từ `terraform/live`.
 
 | | Kind | Jenkins |
 |---|---|---|
-| Type | m7i.xlarge | t3.large |
-| Disk | 100 GiB | 50 GiB |
+| Type | t3.large | t3.small |
+| Disk | 40 GiB | 20 GiB |
 | Ports | 18080 | 8080 |
 | Login | SSM (no .pem) | SSM (no .pem) |
 | user_data | Docker, kind, kubectl 1.28, helm, argocd, cilium, SSM agent | Docker + compose + SSM agent |

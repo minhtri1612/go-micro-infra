@@ -26,22 +26,22 @@ variable "public_subnet_cidr" {
 
 variable "kind_instance_type" {
   type    = string
-  default = "m7i.xlarge"
+  default = "t3.large"
 }
 
 variable "kind_root_volume_size" {
   type    = number
-  default = 100
+  default = 40
 }
 
 variable "jenkins_instance_type" {
   type    = string
-  default = "t3.large"
+  default = "t3.small"
 }
 
 variable "jenkins_root_volume_size" {
   type    = number
-  default = 50
+  default = 20
 }
 
 variable "environments" {
