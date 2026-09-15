@@ -1,26 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="${1:-$HOME/go-micro}"
+INFRA_DIR="${1:-$HOME/go-micro-infra}"
 
 echo "==> Checking tools"
 go-micro-check-tools
 
-if [[ ! -d "${REPO_DIR}/.git" ]]; then
-  echo "==> Cloning repo to ${REPO_DIR}"
-  git clone https://github.com/minhtri1612/go-micro.git "${REPO_DIR}"
+if [[ ! -d "${INFRA_DIR}/.git" ]]; then
+  echo "==> Cloning go-micro-infra to ${INFRA_DIR}"
+  git clone https://github.com/minhtri1612/go-micro-infra.git "${INFRA_DIR}"
 fi
 
-cd "${REPO_DIR}"
-
-echo "==> Repo ready at ${REPO_DIR}"
-echo
-echo "Next:"
-echo "  cd ${REPO_DIR}"
-echo "  sed -n '1,120p' kind/README.md"
-echo
-echo "Suggested first commands:"
-echo "  kind version"
-echo "  kubectl version --client"
-echo "  helm version"
-echo "  docker ps"
+echo "==> Infra ready at ${INFRA_DIR}"
+echo "Next: clone go-micro-gitops and follow ${INFRA_DIR}/kind/README.md"

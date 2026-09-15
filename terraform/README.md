@@ -1,94 +1,102 @@
-# terraform - minimal EC2 host for Kind lab
+# terraform — một chỗ cho AWS lab
 
-This stack creates the smallest AWS base infrastructure for the `go-micro` Kind lab:
+Không còn `terraform_secret/`. Không EKS.
 
-- 1 VPC
-- 1 public subnet
-- 1 Internet Gateway
-- 1 route table for Internet access
-- 1 security group
-- 1 Ubuntu EC2 instance (`m7i.xlarge` by default — 16 GiB RAM; đủ cho 3 Kind cluster lab, lúc chạy ~10 GiB used)
-
-It is intentionally simple. It does **not** create EKS, NAT, private subnets, ALB, or EBS CSI.
-
-## What user_data installs
-
-At first boot, the EC2 host installs:
-
-- Docker Engine
-- `kubectl`
-- `helm`
-- `kind`
-- `argocd`
-- `cilium`
-- `git`, `jq`, `curl`, `unzip`
-
-It also:
-
-- enables Docker on boot
-- adds user `ubuntu` to the `docker` group
-- installs helper command `go-micro-check-tools`
-
-## SSH key
-
-This stack uses an **existing** EC2 key pair in the region (created in AWS console).
-
-- Set `ssh_key_name` to the exact key pair name in AWS (e.g. `minhtri`)
-- Keep the downloaded private key locally (e.g. `../minhtri.pem`) for SSH
-- Terraform does **not** create/import a key pair and does **not** need a `.pub` file
-
-## What gets opened
-
-From your current public IP only (auto-detected at `terraform apply` unless you set `ssh_ingress_cidr`):
-
-- `22` for SSH
-- `18080` for Argo CD port-forward on the host
-- `18081` for Jenkins port-forward on the host
-
-Edit `allowed_tcp_ports` or set `ssh_ingress_cidr` to pin a fixed CIDR if needed.
-
-When you change WiFi/location, run `terraform apply` again — it will refresh the security group with your new IP.
-
-## Run
-
-```bash
-cd terraform
-cp terraform.tfvars.example terraform.tfvars
-# set ssh_key_name to the exact existing AWS key pair name
-terraform init
-terraform plan
-terraform apply -auto-approve
+```
+bootstrap/   S3 + DynamoDB (state + lock). Local state lần đầu.
+live/        VPC + EC2 Kind + EC2 Jenkins + Secrets Manager + IAM ESO
+modules/     vpc, ubuntu-host, app-credentials, eso-iam, ec2-ssm
 ```
 
-## Outputs
+Jenkins **không** nằm trên Kind. Hai EC2, một VPC.
 
-After apply:
+## 1) Bootstrap remote state (làm một lần)
+
+Chicken-egg: bucket state chưa có thì chưa đẩy state vào S3. Root này giữ **local state**.
 
 ```bash
-terraform output ssh_command
+cd terraform/bootstrap
+cp terraform.tfvars.example terraform.tfvars
+terraform init
+terraform apply
+terraform output backend_hcl
+```
+
+Copy output vào `terraform/live/backend.hcl` (file này gitignore).
+
+Bucket: `{project}-tfstate-{account_id}`. Table: `{project}-tf-locks`.
+
+## 2) Live (máy + secret)
+
+```bash
+cd terraform/live
+cp backend.hcl.example backend.hcl
+# dán bucket / table từ bước 1
+cp terraform.tfvars.example terraform.tfvars
+# db_password, stripe_secret_key (no .pem / ssh_key_name)
+
+terraform init -backend-config=backend.hcl
+terraform plan
+terraform apply
+```
+
+Outputs:
+
+```bash
+terraform output kind_ssm_command
+terraform output jenkins_ssm_command
 terraform output argo_url
 terraform output jenkins_url
+terraform output -raw eso_access_key_id
+terraform output -raw eso_secret_access_key
 ```
 
-Then SSH in and run:
+SG mặc định chỉ IP public lúc `apply` (Jenkins :8080, Argo :18080). Đổi WiFi thì `apply` lại. **Không mở port 22** — vào máy bằng SSM.
+
+EIP gắn từng máy — stop/start không đổi IP.
+
+Laptop cần AWS CLI + [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html). IAM user/role của bạn phải có `ssm:StartSession`.
+
+## 3) Sau khi SSM
 
 ```bash
-ssh -i ../minhtri.pem ubuntu@<public-ip>
-go-micro-check-tools
+terraform output -raw jenkins_ssm_command
+# aws ssm start-session --target i-... --region ap-southeast-2
 ```
 
-If you want the repo cloned automatically into your home directory workflow, run:
+**Jenkins trước** (CI):
 
 ```bash
-git clone https://github.com/minhtri1612/go-micro.git ~/go-micro
-cd ~/go-micro
-bash scripts/bootstrap-ubuntu-ec2-kind.sh
+git clone https://github.com/minhtri1612/go-micro-infra.git ~/go-micro-infra
+cd ~/go-micro-infra/jenkins
+cp .env.example .env
+docker compose up -d --build
 ```
 
-## Notes
+**Kind** (cluster + Argo): `kind/README.md`. Clone `go-micro-infra` + `go-micro-gitops`.
 
-- Default AMI: Ubuntu 24.04 LTS
-- Root disk: `gp3` 100 GiB
-- Region default: `ap-southeast-2`
-- Default SSH: existing key pair `minhtri` + private key `../minhtri.pem`
-- `kind/README.md` is still the source of truth for the Kubernetes lab steps
+## Secrets / ESO
+
+`go-micro/{dev,prod}/app-credentials` — JSON DB + Stripe.
+
+IAM user ESO: `GetSecretValue` trên prefix `go-micro/*`. Tạo secret K8s sau khi cluster lên:
+
+```bash
+kubectl -n external-secrets create secret generic aws-credentials \
+  --from-literal=access-key-id="$(terraform output -raw eso_access_key_id)" \
+  --from-literal=secret-access-key="$(terraform output -raw eso_secret_access_key)"
+```
+
+Chạy `output` từ `terraform/live`.
+
+## Defaults
+
+| | Kind | Jenkins |
+|---|---|---|
+| Type | m7i.xlarge | t3.large |
+| Disk | 100 GiB | 50 GiB |
+| Ports | 18080 | 8080 |
+| Login | SSM (no .pem) | SSM (no .pem) |
+| user_data | Docker, kind, kubectl 1.28, helm, argocd, cilium, SSM agent | Docker + compose + SSM agent |
+
+Region mặc định `ap-southeast-2`. Không cần EC2 key pair.

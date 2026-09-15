@@ -3,6 +3,12 @@ set -euxo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 
+KUBECTL_VERSION=v1.28.15
+KIND_VERSION=v0.30.0
+HELM_VERSION=v3.16.4
+ARGOCD_VERSION=v2.14.15
+CILIUM_CLI_VERSION=v0.18.7
+
 apt-get update
 apt-get install -y \
   ca-certificates \
@@ -21,20 +27,16 @@ echo \
   $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
   tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.36/deb/Release.key | \
-  gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-chmod a+r /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.36/deb/ /' | \
-  tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
-
 apt-get update
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin kubectl
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 systemctl enable docker
 systemctl start docker
 usermod -aG docker ubuntu
 
-# Kind + Cilium (ClusterMesh watchers) need higher inotify limits than Ubuntu defaults.
+snap install amazon-ssm-agent --classic
+systemctl enable --now snap.amazon-ssm-agent.amazon-ssm-agent.service
+
 cat >/etc/sysctl.d/99-go-micro-kind.conf <<'EOF'
 fs.inotify.max_user_watches=1048576
 fs.inotify.max_user_instances=8192
@@ -42,19 +44,24 @@ fs.file-max=2097152
 EOF
 sysctl --system
 
-curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+curl -fsSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
+chmod +x /usr/local/bin/kubectl
 
-curl -Lo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.30.0/kind-linux-amd64
+curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" -o /tmp/helm.tgz
+tar -xzf /tmp/helm.tgz -C /tmp
+install -m 755 /tmp/linux-amd64/helm /usr/local/bin/helm
+rm -rf /tmp/helm.tgz /tmp/linux-amd64
+
+curl -Lo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
 chmod +x /usr/local/bin/kind
 
-curl -sSL -o /tmp/argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-install -m 555 /tmp/argocd-linux-amd64 /usr/local/bin/argocd
-rm -f /tmp/argocd-linux-amd64
+curl -sSL -o /tmp/argocd "https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VERSION}/argocd-linux-amd64"
+install -m 555 /tmp/argocd /usr/local/bin/argocd
+rm -f /tmp/argocd
 
-CILIUM_VERSION=$(curl -fsSL https://api.github.com/repos/cilium/cilium-cli/releases/latest | jq -r .tag_name)
 curl -L --fail --remote-name-all \
-  "https://github.com/cilium/cilium-cli/releases/download/$${CILIUM_VERSION}/cilium-linux-amd64.tar.gz" \
-  "https://github.com/cilium/cilium-cli/releases/download/$${CILIUM_VERSION}/cilium-linux-amd64.tar.gz.sha256sum"
+  "https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-amd64.tar.gz" \
+  "https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-amd64.tar.gz.sha256sum"
 sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
 tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
 rm -f cilium-linux-amd64.tar.gz cilium-linux-amd64.tar.gz.sha256sum
@@ -72,10 +79,10 @@ EOF
 chmod +x /usr/local/bin/go-micro-check-tools
 
 cat >/etc/motd <<'EOF'
-go-micro Kind host ready.
+go-micro Kind host (cluster + Argo CD). Jenkins is a separate EC2.
 
-Next steps:
-  cd /home/ubuntu/go-micro || git clone <repo> /home/ubuntu/go-micro
+  git clone https://github.com/minhtri1612/go-micro-infra.git ~/go-micro-infra
+  git clone https://github.com/minhtri1612/go-micro-gitops.git ~/go-micro-gitops
   go-micro-check-tools
-  follow kind/README.md
+  follow ~/go-micro-infra/kind/README.md
 EOF

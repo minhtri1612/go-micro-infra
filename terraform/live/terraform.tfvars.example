@@ -1,0 +1,16 @@
+aws_region   = "ap-southeast-2"
+project_name = "go-micro"
+
+# No SSH key / .pem. Shell = AWS SSM Session Manager.
+# Omit admin_ingress_cidr to lock Jenkins:8080 and Argo:18080 to your current public IP.
+# admin_ingress_cidr = "203.0.113.10/32"
+
+kind_instance_type    = "m7i.xlarge"
+jenkins_instance_type = "t3.large"
+
+environments = ["dev", "prod"]
+db_user      = "postgres"
+db_password  = "CHANGE_ME"
+
+# https://dashboard.stripe.com/apikeys
+stripe_secret_key = "sk_test_REPLACE_ME"

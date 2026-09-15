@@ -11,6 +11,8 @@ terraform {
       version = "~> 3.0"
     }
   }
+
+  backend "s3" {}
 }
 
 provider "aws" {
@@ -19,7 +21,7 @@ provider "aws" {
   default_tags {
     tags = {
       Project   = var.project_name
-      Stack     = "terraform_ec2_kind"
+      Stack     = "live"
       ManagedBy = "terraform"
     }
   }

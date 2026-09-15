@@ -4,6 +4,5 @@ output "app_credentials_secret_name" {
 }
 
 output "app_credentials_secret_arn" {
-  value       = aws_secretsmanager_secret.app_credentials.arn
-  description = "ARN of app credentials secret"
+  value = aws_secretsmanager_secret.app_credentials.arn
 }

@@ -3,7 +3,7 @@
 # Usage:
 #   ./scripts/sync-env-from-hub.sh                    # env/dev.yaml, mọi app service
 #   ./scripts/sync-env-from-hub.sh env/dev.yaml payment order
-# Có DOCKER_USER/DOCKER_PASS (hoặc source scripts/jenkins-ci.env) nếu repo private.
+# Có DOCKER_USER/DOCKER_PASS nếu repo Docker Hub private.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"

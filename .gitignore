@@ -11,6 +11,8 @@ override.tf.json
 .terraformrc
 terraform.rc
 *.pem
-jenkins-ci.env
-scripts/jenkins-ci.env
+jenkins/.env
 **/.terraform/**
+*.tfvars
+!*.tfvars.example
+**/backend.hcl

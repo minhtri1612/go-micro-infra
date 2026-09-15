@@ -6,7 +6,8 @@ Chạy theo đúng thứ tự bên dưới để recreate lab sau reboot, theo c
 
 - Multi-repo: clone **`go-micro-infra`** (Kind/scripts) + **`go-micro-gitops`** (Argo bootstrap/apps)
 - Contexts: `kind-management`, `kind-dev`, `kind-prod`
-- Máy Kind: **Ubuntu / EC2**; **Jenkins CI = VPS riêng** (không trong Kind)
+- Máy Kind: **Ubuntu / EC2** — chỉ cluster + Argo CD
+- Jenkins: máy **khác**, `jenkins/` (docker compose). Không Helm, không Argo.
 - Tool: `docker`, `kind`, `kubectl`, `helm`, `argocd`, `cilium`
 
 > [!TIP]
@@ -110,36 +111,11 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 argocd --grpc-web account get-user-info
 ```
 
-### 2.1) Jenkins — chạy trên VPS (không deploy vào Kind/Argo)
+### 2.1) Jenkins — không nằm trên máy Kind
 
-Multi-repo layout: **Jenkins master trên VPS**, không còn Application `jenkins-management` / `(removed — Jenkins on VPS)`.
+Jenkins dựng **trước / riêng**: `jenkins/docker-compose.yml` trên EC2 CI. Không Helm, không Argo Application, không port `18081`.
 
-| Thành phần | Repo / chỗ |
-|------------|------------|
-| Shared Library | `go-micro-pipeline-lib` → Global Library name `go-micro-ci` |
-| Service pipelines | mỗi repo `go-micro-*` có Jenkinsfile mỏng |
-| Desired state (tags) | `go-micro-gitops` (`env/*.yaml`) — Argo sync |
-| Cluster Kind + platform values | `go-micro-infra` (repo này) |
-
-**VPS Jenkins cần:**
-
-1. Docker (build/push image) + `kubectl` + (tuỳ) `kubectl argo rollouts`
-2. Credentials: Docker Hub, GitHub PAT (push `go-micro-gitops`), kubeconfig contexts (`kind-dev`, …)
-3. Global Pipeline Library → SCM `https://github.com/minhtri1612/go-micro-pipeline-lib.git` (Library path trống)
-4. Một Pipeline job / service repo (webhook GitHub), `scriptPath: Jenkinsfile`
-
-**Argo CD** vẫn mở bằng port-forward `localhost:18080` như mục trên. Không cần `localhost:18081` cho Jenkins-in-cluster nữa.
-
-Folder `jenkins/` trong repo này chỉ còn **tham chiếu lịch sử** (Helm values cũ) — **không** apply vào Kind.
-
-Nếu cluster còn app Jenkins cũ:
-
-```bash
-argocd --grpc-web app delete jenkins-management --cascade
-# hoặc
-kubectl -n argocd delete application jenkins-management --ignore-not-found
-kubectl delete ns jenkins --ignore-not-found
-```
+Xem `jenkins/README.md`. Argo CD vẫn port-forward `localhost:18080` ở mục trên.
 
 ### 2.2) ArgoCD Rollout UI Extension (xem % traffic ngay trên Argo UI)
 
@@ -180,29 +156,6 @@ Sau khi cài:
 - Có thể soi `%` tại:
   - `status.currentWeight` (Rollout),
   - hoặc `TraefikService` weighted services (`stable/canary`).
-
-### 2.3) Jenkins external quality gate (manual Promote/Rollback)
-
-Pipeline `Jenkinsfile` đã hỗ trợ gate thủ công sau khi test pass:
-
-- Gate hiển thị lựa chọn:
-  - `Promote to stable`
-  - `Rollback now`
-- Khi fail và `AUTO_ABORT=false`, có thêm fail gate:
-  - `Rollback now`
-  - `Do nothing`
-
-Để chắc chắn nút gate xuất hiện:
-
-```text
-PIPELINE_SCOPE=full
-AUTO_PROMOTE=false
-ENABLE_MANUAL_ROLLOUT_GATE=true
-ROLLOUT_SERVICE=<service cụ thể, ví dụ product>   # tránh để auto khi DEP/BIZ = all
-```
-
-> [!IMPORTANT]
-> Không dùng **Restart from stage: Promote Rollout** nếu muốn giữ đúng quy trình gate; thao tác này có thể bỏ qua phần test/gate trước đó. Hãy dùng `Build with Parameters` cho run mới.
 
 ---
 
@@ -451,7 +404,7 @@ Dùng khi máy/cluster có egress ra AWS và bạn đã có secret JSON trên Se
   - Secret **trên AWS** (`go-micro/dev/app-credentials`, `go-micro/prod/app-credentials`) chứa JSON app (`DB_USER`, `DB_PASSWORD`, `PRODUCT_DB_NAME`, `INVENTORY_DB_NAME`, `ORDER_DB_NAME`, `NOTIFICATION_DB_NAME`, `PAYMENT_DB_NAME`) - đích mà **ExternalSecret** đồng bộ vào K8s.
    - Secret **`aws-credentials` trong cluster** chứa **Access key IAM** để **controller ESO** gọi API AWS (`GetSecretValue`). Không có nó (hoặc không có auth tương đương), ESO không đọc được AWS.
 
-   IAM cần `secretsmanager:GetSecretValue` trên prefix secret của project (giống user ESO trong `terraform_secret` hoặc `terraform/modules/iam`).
+   IAM cần `secretsmanager:GetSecretValue` trên prefix secret của project (IAM user ESO trong `terraform/live`).
 
    ```bash
    # paste key thật vào 2 biến này rồi chạy 1 lần
@@ -469,7 +422,7 @@ Dùng khi máy/cluster có egress ra AWS và bạn đã có secret JSON trên Se
    **Khuyen nghi (tranh nhap tay sai key): dong bo tu Terraform state**
 
    ```bash
-   cd ~/Downloads/go-micro/terraform_secret
+   cd ~/go-micro-infra/terraform/live
    TF_AKID="$(terraform output -raw eso_access_key_id)"
    TF_SAK="$(terraform output -raw eso_secret_access_key)"
 
