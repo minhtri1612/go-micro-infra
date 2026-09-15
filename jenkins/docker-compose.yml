@@ -11,8 +11,9 @@ services:
     environment:
       CASC_JENKINS_CONFIG: /var/jenkins_home/casc_configs
       JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
-      JENKINS_URL: ${JENKINS_URL:-http://localhost:8080/}
+      JENKINS_ADMIN_ID: ${JENKINS_ADMIN_ID:-admin}
       JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?set in .env}
+      JENKINS_URL: ${JENKINS_URL:-http://localhost:8080/}
       DOCKERHUB_USER: ${DOCKERHUB_USER:?set in .env}
       DOCKERHUB_TOKEN: ${DOCKERHUB_TOKEN:?set in .env}
       GITHUB_USER: ${GITHUB_USER:?set in .env}
