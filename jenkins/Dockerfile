@@ -1,5 +1,5 @@
-# Jenkins controller chạy trên EC2 riêng — không deploy vào Kind.
-FROM jenkins/jenkins:2.492.3-lts-jdk17
+# LTS hiện tại: plugin latest (git, github, CASC…) đòi core >= 2.504.3.
+FROM jenkins/jenkins:lts-jdk17
 
 USER root
 
