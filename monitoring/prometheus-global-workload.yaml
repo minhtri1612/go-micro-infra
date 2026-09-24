@@ -3,9 +3,6 @@ kind: Service
 metadata:
   name: prometheus-global
   namespace: monitoring
-  annotations:
-    io.cilium/global-service: "true"
-    io.cilium/shared-service: "true"
 spec:
   type: ClusterIP
   ports:

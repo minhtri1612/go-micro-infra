@@ -8,7 +8,6 @@
 #
 # IP mặc định script lấy từ: docker inspect management-control-plane (đổi tên bằng MGMT_CONTROL_PLANE_CONTAINER).
 # Port mặc định: 32090 (monitoring-mgmt.yaml NodePort → prometheus 9090).
-# MetalLB không bắt buộc cho luồng này: traffic là workload → management qua Docker bridge, không cần LB trên spoke.
 #
 # Lưu ý mạng Kind: pod trên kind-dev có thể KHÔNG route tới IP container management-control-plane
 # (mỗi cluster thường một Docker network riêng) → curl từ `kubectl run` trên dev có thể treo tới timeout.

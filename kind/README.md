@@ -22,7 +22,7 @@ Chạy theo đúng thứ tự bên dưới để recreate lab sau reboot, theo c
 
 > [!IMPORTANT]
 > README này da toi uu cho **Ubuntu / EC2** va chi dung **3 cluster**: `management`, `dev`, `prod`.
-> **Khong dung staging**. **Khong dung Cilium / MetalLB** — CNI = kindnet, Rollout = Traefik.
+> **Khong dung staging**. CNI = kindnet. Ingress = Traefik NodePort. Khong Cilium, khong MetalLB.
 
 ---
 
@@ -196,13 +196,10 @@ argocd --grpc-web app terminate-op monitoring-dev || true
 argocd --grpc-web app terminate-op monitoring-prod || true
 argocd --grpc-web app sync monitoring-dev
 argocd --grpc-web app sync monitoring-prod
-# kindnet sẵn trên 3 cluster — wait monitoring-dev/prod được (không còn deadlock Cilium).
 argocd --grpc-web app wait monitoring-dev --health --sync --timeout 300 || true
 argocd --grpc-web app wait monitoring-prod --health --sync --timeout 300 || true
 
-# KHÔNG apply Cilium / MetalLB (09–11, 15–18, 18-cilium). CNI = kindnet. Rollout = Traefik.
-
-# rollouts + traefik
+# rollouts + traefik (NodePort, no MetalLB)
 kubectl apply -f "$GITOPS/argocd/bootstrap/12-argo-rollouts-dev.yaml"
 kubectl apply -f "$GITOPS/argocd/bootstrap/14-argo-rollouts-prod.yaml"
 kubectl apply -f "$GITOPS/argocd/bootstrap/19-traefik-dev.yaml"
@@ -217,50 +214,6 @@ kubectl apply -f "$GITOPS/argocd/bootstrap/02-dev-microservices-stack.yaml"
 kubectl apply -f "$GITOPS/argocd/bootstrap/04-prod-microservices-stack.yaml"
 argocd --grpc-web app sync dev-microservices
 argocd --grpc-web app sync prod-microservices
-```
-
-### 4.1 Recovery nếu Cilium fail vì ServiceMonitor CRD
-
-Binh thuong KHONG can patch tay. Neu gap loi hiem `could not find monitoring.coreos.com/ServiceMonitor`,
-co the patch tam de unblock CNI roi sync lai:
-
-```bash
-kubectl --context kind-management -n argocd patch application cilium-dev --type json -p='[{"op":"add","path":"/spec/sources/0/helm/valuesObject","value":{"hubble":{"metrics":{"serviceMonitor":{"enabled":false}}},"prometheus":{"serviceMonitor":{"enabled":false}},"operator":{"prometheus":{"serviceMonitor":{"enabled":false}}}}}]'
-kubectl --context kind-management -n argocd patch application cilium-prod --type json -p='[{"op":"add","path":"/spec/sources/0/helm/valuesObject","value":{"hubble":{"metrics":{"serviceMonitor":{"enabled":false}}},"prometheus":{"serviceMonitor":{"enabled":false}},"operator":{"prometheus":{"serviceMonitor":{"enabled":false}}}}}]'
-argocd --grpc-web app sync cilium-dev
-argocd --grpc-web app sync cilium-prod
-```
-
-### 4.2 Recovery nhanh khi bi deadlock (node NotReady + monitoring Pending)
-
-Trieu chung thuong gap:
-
-- `kubectl --context kind-dev get nodes` -> `NotReady`
-- `kps-wl-admission-create-*` o `monitoring` bi `Pending`
-- `argocd app sync cilium-dev` fail voi loi thieu `ServiceMonitor` CRD
-
-Nguyen nhan:
-
-- Monitoring workload chua schedule duoc khi node chua co CNI
-- Cilium workload lai bi chan boi `ServiceMonitor` CRD chua co
-- Hai ben cho nhau -> deadlock bootstrap
-
-Lenh pha deadlock (copy/chay):
-
-```bash
-# Patch tam tren 3 app Cilium workload de tat ServiceMonitor
-kubectl --context kind-management -n argocd patch application cilium-dev --type json -p='[{"op":"add","path":"/spec/sources/0/helm/valuesObject","value":{"hubble":{"metrics":{"serviceMonitor":{"enabled":false}}},"prometheus":{"serviceMonitor":{"enabled":false}},"operator":{"prometheus":{"serviceMonitor":{"enabled":false}}}}}]'
-kubectl --context kind-management -n argocd patch application cilium-prod --type json -p='[{"op":"add","path":"/spec/sources/0/helm/valuesObject","value":{"hubble":{"metrics":{"serviceMonitor":{"enabled":false}}},"prometheus":{"serviceMonitor":{"enabled":false}},"operator":{"prometheus":{"serviceMonitor":{"enabled":false}}}}}]'
-
-# Sync Cilium truoc de node len Ready
-argocd --grpc-web app sync cilium-dev
-argocd --grpc-web app sync cilium-prod
-argocd --grpc-web app wait cilium-dev --health --sync --timeout 900
-argocd --grpc-web app wait cilium-prod --health --sync --timeout 900
-
-# Node da Ready thi sync lai monitoring
-argocd --grpc-web app sync monitoring-dev
-argocd --grpc-web app sync monitoring-prod
 ```
 
 ---
@@ -433,8 +386,8 @@ kubectl --context kind-prod get externalsecret,secret -n microservices-prod
 argocd proj list
 argocd app list
 
-kubectl --context kind-dev -n kube-system get pods -l k8s-app=cilium
-kubectl --context kind-prod -n kube-system get pods -l k8s-app=cilium
+kubectl --context kind-dev -n kube-system get pods -l app=kindnet
+kubectl --context kind-prod -n kube-system get pods -l app=kindnet
 
 kubectl --context kind-management -n monitoring get pods
 kubectl --context kind-dev -n external-secrets get pods
@@ -443,112 +396,26 @@ kubectl --context kind-prod -n external-secrets get pods
 
 ---
 
-## 8) ClusterMesh runbook (bat buoc doc)
+## 8) Ops notes
 
-### 8.1 Argo `Healthy` khong dong nghia ClusterMesh da noi
+### 8.1 Secrets AWS / ESO
 
-- `argocd app list` chi cho thay app/state resource.
-- Kiem tra that bang:
-
-```bash
-for ctx in kind-management kind-dev kind-prod; do
-  echo "=== $ctx ==="
-  cilium clustermesh status --context "$ctx"
-done
-```
-
-### 8.2 Thu tu on dinh de tranh race: sync → script → verify
-
-Dung thu tu nay de giam toi da race condition (Argo reconcile vs runtime cert patch):
-
-```bash
-# 1) Sync Cilium apps truoc (dua runtime ve dung Git)
-argocd app sync cilium-management --grpc-web
-argocd app sync cilium-dev --grpc-web
-argocd app sync cilium-prod --grpc-web
-argocd app wait cilium-management --health --sync --timeout 600 --grpc-web
-argocd app wait cilium-dev --health --sync --timeout 600 --grpc-web
-argocd app wait cilium-prod --health --sync --timeout 600 --grpc-web
-
-# 2) Chay recovery script (CA bundle + restart)
-cd ~/Downloads/go-micro
-./scripts/kind-clustermesh-sync-spoke-from-hub.sh
-
-# 3) Verify
-for ctx in kind-management kind-dev kind-prod; do
-  echo "=== $ctx ==="
-  cilium clustermesh status --context "$ctx"
-done
-```
-
-Neu van con loi sau buoc verify, KHONG restart tung context ngau nhien. Xu ly theo `8.3` / `8.8`.
-
-### 8.3 Tai sao "chay script roi" van sai?
-
-Thuong la do chay script khong dung bo cua repo hien tai, hoac chay script nhung khong sync lai ArgoCD theo thu tu.
-Voi `go-micro`, dung dung bo script sau:
-
-```bash
-chmod +x scripts/kind-clustermesh-peer-ip.sh scripts/kind-clustermesh-sync-spoke-from-hub.sh
-```
-
-Luu y: script nay dong bo CA/cert, nhung neu endpoint peer trong secret `cilium-clustermesh` bi drift thi can them buoc fix endpoint (xem `8.8`).
-
-### 8.4 Khi nao chi can `argocd app sync`?
-
-Chi can sync khi ban da sua Git va khong co cert drift:
-
-```bash
-argocd app sync cilium-management --grpc-web
-argocd app sync cilium-dev --grpc-web
-argocd app sync cilium-prod --grpc-web
-```
-
-### 8.5 Khi nao phai chay recovery script?
-
-Chay recovery neu thay dau hieu:
-
-- `KVStoreMesh ... 0/1 connected`
-- `x509: certificate signed by unknown authority`
-- Recreate cluster / doi IP LB / rotate cert
-
-```bash
-cd ~/Downloads/go-micro
-./scripts/kind-clustermesh-sync-spoke-from-hub.sh
-
-argocd app sync cilium-management --grpc-web
-argocd app sync cilium-dev --grpc-web
-argocd app sync cilium-prod --grpc-web
-```
-
-### 8.6 Secrets AWS sai co can ghi vao README khong?
-
-Co. Do la loi hay gap nhat lam ESO fail:
+Loi hay gap:
 
 - `ExternalSecret` ra `SecretSyncedError`
 - Pod app bi `CreateContainerConfigError` vi missing secret
 
-Da co runbook o muc `6.1` de:
+Xem muc `6.1`: tao `external-secrets/aws-credentials` tu Terraform output, force ESO reconcile.
 
-- lay key dung tu Terraform output
-- tao lai `external-secrets/aws-credentials`
-- force ESO reconcile
+### 8.2 Recovery ArgoCD `ComparisonError` sau reboot
 
-### 8.7 Recovery ArgoCD `ComparisonError` sau reboot
-
-Trieu chung thuong gap:
+Trieu chung:
 
 - `argocd app list` thay nhieu app `STATUS: Unknown`, `CONDITIONS: ComparisonError`
 - `argocd app get <app>` co loi `dial tcp <argocd-repo-server-cluster-ip>:8081: connect: operation not permitted`
 - `kubectl -n argocd get endpoints argocd-repo-server` ra rong
 
-Nguyen nhan hay gap tren local Kind + Cilium:
-
-- NetworkPolicy trong namespace `argocd` chan probe tu kubelet (node/host network) den `/healthz`
-- `argocd-repo-server` hoac `argocd-application-controller` khong bao gio `Ready`
-- Controller khong noi duoc repo-server => tat ca app thanh `ComparisonError`
-
-Chan doan nhanh:
+Nguyen nhan hay gap: NetworkPolicy trong namespace `argocd` chan probe; repo-server/controller khong `Ready`.
 
 ```bash
 kubectl --context kind-management -n argocd get pods -o wide
@@ -557,7 +424,7 @@ kubectl --context kind-management -n argocd describe pod -l app.kubernetes.io/na
 kubectl --context kind-management -n argocd describe pod -l app.kubernetes.io/name=argocd-application-controller | tail -20
 ```
 
-Neu thay readiness/liveness timeout den `:8084` (repo-server) hoac `:8082` (application-controller), fix nhanh cho local:
+Neu readiness timeout:
 
 ```bash
 helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
@@ -572,64 +439,7 @@ kubectl --context kind-management -n argocd rollout restart statefulset/argocd-a
 kubectl --context kind-management -n argocd rollout restart deploy/argocd-notifications-controller
 ```
 
-Clear cache `ComparisonError`:
-
 ```bash
 argocd --grpc-web app list -o name | xargs -n1 argocd --grpc-web app get --hard-refresh >/tmp/argocd-refresh.log 2>&1 || true
 argocd --grpc-web app list
-```
-
-### 8.8 Fix dut diem khi `KVStoreMesh connected` nhung `cilium-agent not connected`
-
-Trieu chung:
-
-- `cilium clustermesh status` tren spoke/management bao:
-  - `KVStoreMesh ... connected`
-  - nhung `cilium-xxxxx is not connected ... remote cluster configuration required but not found`
-    hoac `Waiting for initial connection to be established`
-
-Nguyen nhan goc hay gap:
-
-- Secret `cilium-kvstoremesh` co endpoint remote DUNG (`https://dev.mesh.cilium.io:2379`, ...)
-- Nhung secret `cilium-clustermesh` lai bi endpoint local (`https://clustermesh-apiserver.kube-system.svc:2379`)
-- Cilium agent doc `cilium-clustermesh` -> quay vao local endpoint -> ket noi peer that bi ket
-
-Fix runtime ngay (khong can hardcode cert/key vao Git):
-
-```bash
-for ctx in kind-management kind-dev kind-prod; do
-  echo "=== $ctx ==="
-  keys=$(kubectl --context "$ctx" -n kube-system get secret cilium-kvstoremesh -o go-template='{{range $k,$v := .data}}{{printf "%s\n" $k}}{{end}}')
-  while IFS= read -r k; do
-    [ -z "$k" ] && continue
-    v=$(kubectl --context "$ctx" -n kube-system get secret cilium-kvstoremesh -o jsonpath="{.data.$k}")
-    kubectl --context "$ctx" -n kube-system patch secret cilium-clustermesh --type merge -p "{\"data\":{\"$k\":\"$v\"}}"
-  done <<< "$keys"
-done
-
-for ctx in kind-management kind-dev kind-prod; do
-  kubectl --context "$ctx" -n kube-system rollout restart ds/cilium
-  kubectl --context "$ctx" -n kube-system rollout status ds/cilium --timeout=300s
-done
-```
-
-Verify lai:
-
-```bash
-for ctx in kind-management kind-dev kind-prod; do
-  echo "=== $ctx ==="
-  cilium clustermesh status --context "$ctx"
-done
-```
-
-Ky vong ket qua:
-
-- management: `2/2 configured, 2/2 connected`
-- dev/prod: `1/1 configured, 1/1 connected`
-
----
-```bash
-
-echo "http://$(docker inspect management-control-plane --format '{{.NetworkSettings.Networks.kind.IPAddress}}'):32000"
-
 ```

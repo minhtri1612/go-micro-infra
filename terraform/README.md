@@ -97,6 +97,6 @@ Chạy `output` từ `terraform/live`.
 | Disk | 40 GiB | 20 GiB |
 | Ports | 18080 | 8080 |
 | Login | SSM (no .pem) | SSM (no .pem) |
-| user_data | Docker, kind, kubectl 1.28, helm, argocd, cilium, SSM agent | Docker + compose + SSM agent |
+| user_data | Docker, kind, kubectl 1.28, helm, argocd, SSM agent | Docker + compose + SSM agent |
 
 Region mặc định `ap-southeast-2`. Không cần EC2 key pair.

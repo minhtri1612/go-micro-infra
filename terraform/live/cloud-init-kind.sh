@@ -7,7 +7,6 @@ KUBECTL_VERSION=v1.28.15
 KIND_VERSION=v0.30.0
 HELM_VERSION=v3.16.4
 ARGOCD_VERSION=v2.14.15
-CILIUM_CLI_VERSION=v0.18.7
 
 apt-get update
 apt-get install -y \
@@ -59,13 +58,6 @@ curl -sSL -o /tmp/argocd "https://github.com/argoproj/argo-cd/releases/download/
 install -m 555 /tmp/argocd /usr/local/bin/argocd
 rm -f /tmp/argocd
 
-curl -L --fail --remote-name-all \
-  "https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-amd64.tar.gz" \
-  "https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-amd64.tar.gz.sha256sum"
-sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
-tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
-rm -f cilium-linux-amd64.tar.gz cilium-linux-amd64.tar.gz.sha256sum
-
 cat >/usr/local/bin/go-micro-check-tools <<'EOF'
 #!/bin/bash
 set -e
@@ -74,7 +66,6 @@ echo "kind: $(kind version)"
 echo "kubectl: $(kubectl version --client --output=yaml | grep gitVersion | head -1)"
 echo "helm: $(helm version --short)"
 echo "argocd: $(argocd version --client --short | head -1)"
-echo "cilium: $(cilium version --client 2>/dev/null | head -1)"
 EOF
 chmod +x /usr/local/bin/go-micro-check-tools
 
