@@ -36,7 +36,7 @@ variable "kind_root_volume_size" {
 
 variable "jenkins_instance_type" {
   type    = string
-  default = "t3.small"
+  default = "t4g.small"
 }
 
 variable "jenkins_root_volume_size" {

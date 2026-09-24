@@ -4,7 +4,12 @@ data "aws_ami" "ubuntu" {
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-${var.ami_arch}-server-*"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = [var.ami_arch == "amd64" ? "x86_64" : "arm64"]
   }
 
   filter {
@@ -51,6 +56,17 @@ resource "aws_instance" "this" {
   user_data                   = var.user_data
   user_data_replace_on_change = false
 
+  dynamic "instance_market_options" {
+    for_each = var.use_spot ? [1] : []
+    content {
+      market_type = "spot"
+      spot_options {
+        spot_instance_type             = "persistent"
+        instance_interruption_behavior = "stop"
+      }
+    }
+  }
+
   root_block_device {
     volume_type = "gp3"
     volume_size = var.root_volume_size
@@ -60,6 +76,10 @@ resource "aws_instance" "this" {
   tags = {
     Name = "${var.project_name}-${var.name}"
     Role = var.name
+  }
+
+  lifecycle {
+    ignore_changes = [ami]
   }
 }
 

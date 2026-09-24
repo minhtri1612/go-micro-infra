@@ -11,6 +11,23 @@ variable "instance_type" {
   type = string
 }
 
+variable "ami_arch" {
+  type        = string
+  default     = "amd64"
+  description = "Ubuntu AMI arch: amd64 (t3) or arm64 (t4g)."
+
+  validation {
+    condition     = contains(["amd64", "arm64"], var.ami_arch)
+    error_message = "ami_arch must be amd64 or arm64."
+  }
+}
+
+variable "use_spot" {
+  type        = bool
+  default     = false
+  description = "Launch as persistent Spot; interruption stops the instance (disk kept)."
+}
+
 variable "subnet_id" {
   type = string
 }

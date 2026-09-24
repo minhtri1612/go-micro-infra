@@ -4,11 +4,11 @@ Không còn `terraform_secret/`. Không EKS.
 
 ```
 bootstrap/   S3 + DynamoDB (state + lock). Local state lần đầu.
-live/        VPC + EC2 Kind + EC2 Jenkins + Secrets Manager + IAM ESO
+live/        VPC + EC2 Jenkins (t4g.small Spot) + EC2 Kind (t3.large Spot). Secrets not created.
 modules/     vpc, ubuntu-host, app-credentials, eso-iam, ec2-ssm
 ```
 
-Jenkins **không** nằm trên Kind. Hai EC2, một VPC.
+Jenkins **không** nằm trên Kind. Hai EC2, một VPC. Cả hai Spot.
 
 ## 1) Bootstrap remote state (làm một lần)
 
@@ -93,7 +93,7 @@ Chạy `output` từ `terraform/live`.
 
 | | Kind | Jenkins |
 |---|---|---|
-| Type | t3.large | t3.small |
+| Type | t3.large (amd64, Spot persistent / stop) | t4g.small (arm64, Spot persistent / stop) |
 | Disk | 40 GiB | 20 GiB |
 | Ports | 18080 | 8080 |
 | Login | SSM (no .pem) | SSM (no .pem) |
