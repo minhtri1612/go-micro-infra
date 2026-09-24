@@ -5,8 +5,8 @@ apiVersion: kind.x-k8s.io/v1alpha4
 networking:
   apiServerAddress: "127.0.0.1"
   apiServerPort: 33443
-  # Disable default CNI so we can install Cilium explicitly.
-  disableDefaultCNI: true
+  # kindnet (default). Cilium/MetalLB không dùng trên lab này.
+  disableDefaultCNI: false
   podSubnet: 10.200.0.0/16
   serviceSubnet: 10.220.0.0/16
 

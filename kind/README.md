@@ -8,7 +8,7 @@ Chạy theo đúng thứ tự bên dưới để recreate lab sau reboot, theo c
 - Contexts: `kind-management`, `kind-dev`, `kind-prod`
 - Máy Kind: **Ubuntu / EC2** — chỉ cluster + Argo CD
 - Jenkins: máy **khác**, `jenkins/` (docker compose). Không Helm, không Argo.
-- Tool: `docker`, `kind`, `kubectl`, `helm`, `argocd`, `cilium`
+- Tool: `docker`, `kind`, `kubectl`, `helm`, `argocd`
 
 > [!TIP]
 > Neu tao EC2 bang stack trong `terraform/`, host da tu cai san tool. SSH vao may roi:
@@ -22,20 +22,7 @@ Chạy theo đúng thứ tự bên dưới để recreate lab sau reboot, theo c
 
 > [!IMPORTANT]
 > README này da toi uu cho **Ubuntu / EC2** va chi dung **3 cluster**: `management`, `dev`, `prod`.
-> **Khong dung staging** de tiet kiem RAM/CPU.
-
-> [!WARNING]
-> Tren EC2 neu Cilium CrashLoop voi log `too many open files` / `unable to create config directory watcher`,
-> tang inotify tren **host** (khong phai trong pod):
-> ```bash
-> sudo tee /etc/sysctl.d/99-go-micro-kind.conf >/dev/null <<'EOF'
-> fs.inotify.max_user_watches=1048576
-> fs.inotify.max_user_instances=8192
-> fs.file-max=2097152
-> EOF
-> sudo sysctl --system
-> kubectl -n kube-system delete pod -l k8s-app=cilium
-> ```
+> **Khong dung staging**. **Khong dung Cilium / MetalLB** — CNI = kindnet, Rollout = Traefik.
 
 ---
 
@@ -52,19 +39,6 @@ kind create cluster --name management --config kind/management-kind-config.yaml
 kubectl config use-context kind-management
 # Kind đôi khi ghi server=https://0.0.0.0:<port> → TLS fail; ép về 127.0.0.1.
 kubectl config set-cluster kind-management --server=https://127.0.0.1:33443
-
-helm repo add cilium https://helm.cilium.io 2>/dev/null || true
-helm repo update
-# Bắt buộc dùng cả 2 file: bootstrap override 2 thứ chưa có lúc này:
-# 1) ServiceMonitor CRD chưa có (Prometheus Operator chưa cài) → nếu không tắt, Helm lỗi "no matches for kind ServiceMonitor"
-# 2) clustermesh-apiserver service type NodePort thay vì LoadBalancer (MetalLB chưa cài) → nếu không override, Helm --wait treo chờ EXTERNAL-IP mãi
-# Sau khi Argo sync monitoring (05) + metallb-management (18) + cilium-management, ArgoCD tự dùng cilium-values-management.yaml (ServiceMonitor bật, LoadBalancer + MetalLB IP tĩnh).
-# → Đây là cách phòng ngừa deadlock bootstrap (node NotReady + monitoring Pending chờ nhau), không cần patch tay sau.
-helm upgrade --install cilium cilium/cilium -n kube-system --create-namespace \
-  --version 1.19.2 \
-  -f cilium/cilium-values-management.yaml \
-  -f cilium/cilium-values-management-bootstrap.yaml \
-  --wait --timeout 10m
 
 kind create cluster --name dev --config kind/dev-kind-config.yaml
 kind create cluster --name prod --config kind/prod-kind-config.yaml
@@ -201,8 +175,6 @@ INFRA=~/go-micro-infra
 argocd repo add https://github.com/minhtri1612/go-micro-gitops.git || true
 argocd repo add https://github.com/minhtri1612/go-micro-infra.git || true
 argocd repo add https://argoproj.github.io/argo-helm --type helm --name argo-helm || true
-argocd repo add https://metallb.github.io/metallb --type helm --name metallb || true
-argocd repo add https://helm.cilium.io/ --type helm --name cilium || true
 argocd repo add https://helm.traefik.io/traefik --type helm --name traefik || true
 argocd repo add https://prometheus-community.github.io/helm-charts --type helm --name prometheus-community || true
 
@@ -224,58 +196,11 @@ argocd --grpc-web app terminate-op monitoring-dev || true
 argocd --grpc-web app terminate-op monitoring-prod || true
 argocd --grpc-web app sync monitoring-dev
 argocd --grpc-web app sync monitoring-prod
-# Khong wait monitoring workload o day: monitoring-dev/prod can node Ready (co CNI) moi
-# schedule duoc pod, nhung node chua Ready vi Cilium chua len. Đây là điểm cực kỳ dễ gây DEADLOCK.
+# kindnet sẵn trên 3 cluster — wait monitoring-dev/prod được (không còn deadlock Cilium).
+argocd --grpc-web app wait monitoring-dev --health --sync --timeout 300 || true
+argocd --grpc-web app wait monitoring-prod --health --sync --timeout 300 || true
 
-> [!IMPORTANT]
-> **NẾU GẶP LỖI:** Node `NotReady` + Monitoring `Pending` + Cilium sync fail (thiếu ServiceMonitor CRD)
-> Hãy chạy ngay block lệnh dưới đây để phá deadlock (đã test thành công):
-> ```bash
-> # 1. Patch tắt ServiceMonitor để Cilium không đòi CRD nữa
- for env in dev prod; do
-   kubectl --context kind-management -n argocd patch application cilium-$env --type json -p='[{"op":"add","path":"/spec/sources/0/helm/valuesObject","value":{"hubble":{"metrics":{"serviceMonitor":{"enabled":false}}},"prometheus":{"serviceMonitor":{"enabled":false}},"operator":{"prometheus":{"serviceMonitor":{"enabled":false}}}}}]'
- done
-> # 2. Sync Cilium trước để node lên Ready
- argocd --grpc-web app sync cilium-dev cilium-prod --grpc-web
- argocd --grpc-web app wait cilium-dev cilium-prod --health --timeout 600 --grpc-web
-> # 3. Bây giờ mới sync Monitoring
- argocd --grpc-web app sync monitoring-dev monitoring-prod --grpc-web
-> ```
-
-# cilium workload
-
-# cilium workload
-kubectl apply -f "$GITOPS/argocd/bootstrap/09-cilium-dev.yaml"
-kubectl apply -f "$GITOPS/argocd/bootstrap/11-cilium-prod.yaml"
-sleep 3
-argocd --grpc-web app terminate-op cilium-dev || true
-argocd --grpc-web app terminate-op cilium-prod || true
-argocd --grpc-web app sync cilium-dev
-argocd --grpc-web app sync cilium-prod
-
-# cilium management
-kubectl apply -f "$GITOPS/argocd/bootstrap/18-cilium-management.yaml"
-argocd --grpc-web app sync cilium-management
-
-# metallb
-kubectl apply -f "$GITOPS/argocd/bootstrap/15-metallb-dev.yaml"
-kubectl apply -f "$GITOPS/argocd/bootstrap/17-metallb-prod.yaml"
-kubectl apply -f "$GITOPS/argocd/bootstrap/18-metallb-management.yaml"
-argocd --grpc-web app sync metallb-management
-argocd --grpc-web app sync metallb-dev
-argocd --grpc-web app sync metallb-prod
-argocd --grpc-web app wait metallb-management --health --sync --timeout 300
-argocd --grpc-web app wait metallb-dev --health --sync --timeout 300
-argocd --grpc-web app wait metallb-prod --health --sync --timeout 300
-
-# sau khi MetalLB da cap EXTERNAL-IP cho clustermesh-apiserver, cho cilium on dinh
-argocd --grpc-web app sync cilium-management
-argocd --grpc-web app sync cilium-dev
-argocd --grpc-web app sync cilium-prod
-argocd --grpc-web app wait cilium-management --health --sync --timeout 300
-argocd --grpc-web app wait cilium-dev --health --sync --timeout 300
-argocd --grpc-web app wait cilium-prod --health --sync --timeout 300
-
+# KHÔNG apply Cilium / MetalLB (09–11, 15–18, 18-cilium). CNI = kindnet. Rollout = Traefik.
 
 # rollouts + traefik
 kubectl apply -f "$GITOPS/argocd/bootstrap/12-argo-rollouts-dev.yaml"
