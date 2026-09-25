@@ -24,3 +24,9 @@ variable "stripe_secret_key" {
   type      = string
   sensitive = true
 }
+
+variable "recovery_window_in_days" {
+  type        = number
+  default     = 7
+  description = "Secrets Manager deletion window. 0 = immediate (lab destroy). Prefer 7–30."
+}

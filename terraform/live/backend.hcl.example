@@ -1,5 +1,0 @@
-bucket         = "REPLACE_FROM_BOOTSTRAP_OUTPUT"
-key            = "live/terraform.tfstate"
-region         = "ap-southeast-2"
-dynamodb_table = "REPLACE_FROM_BOOTSTRAP_OUTPUT"
-encrypt        = true

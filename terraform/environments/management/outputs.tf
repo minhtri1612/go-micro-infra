@@ -35,3 +35,22 @@ output "jenkins_url" {
   description = "Jenkins UI (GitHub webhooks need this reachable)."
   value       = "http://${module.jenkins_host.public_ip}:8080"
 }
+
+output "app_credentials_secret_names" {
+  description = "AWS Secrets Manager names ESO remoteRef.key (go-micro/{env}/app-credentials)."
+  value       = { for env, m in module.app_credentials : env => m.app_credentials_secret_name }
+}
+
+output "eso_iam_user_name" {
+  value = module.eso_iam.eso_iam_user_name
+}
+
+output "eso_access_key_id" {
+  value     = module.eso_iam.eso_access_key_id
+  sensitive = true
+}
+
+output "eso_secret_access_key" {
+  value     = module.eso_iam.eso_secret_access_key
+  sensitive = true
+}

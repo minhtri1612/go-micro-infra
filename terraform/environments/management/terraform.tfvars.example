@@ -12,5 +12,8 @@ environments = ["dev", "prod"]
 db_user      = "postgres"
 db_password  = "CHANGE_ME"
 
+# Immediate SM delete on destroy (lab). Default in code is 7.
+# secret_recovery_window_in_days = 0
+
 # https://dashboard.stripe.com/apikeys
 stripe_secret_key = "sk_test_REPLACE_ME"

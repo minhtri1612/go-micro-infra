@@ -8,6 +8,11 @@ variable "project_name" {
   default = "go-micro"
 }
 
+variable "stack" {
+  type    = string
+  default = "management"
+}
+
 variable "admin_ingress_cidr" {
   type        = string
   default     = null
@@ -80,4 +85,10 @@ variable "app_credentials_name_suffix_by_env" {
 variable "eso_iam_user_suffix" {
   type    = string
   default = "multi"
+}
+
+variable "secret_recovery_window_in_days" {
+  type        = number
+  default     = 7
+  description = "Passed to app-credentials. Use 0 only when you need immediate secret delete on destroy."
 }

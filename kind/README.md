@@ -282,7 +282,7 @@ Dùng khi máy/cluster có egress ra AWS và bạn đã có secret JSON trên Se
   - Secret **trên AWS** (`go-micro/dev/app-credentials`, `go-micro/prod/app-credentials`) chứa JSON app (`DB_USER`, `DB_PASSWORD`, `PRODUCT_DB_NAME`, `INVENTORY_DB_NAME`, `ORDER_DB_NAME`, `NOTIFICATION_DB_NAME`, `PAYMENT_DB_NAME`) - đích mà **ExternalSecret** đồng bộ vào K8s.
    - Secret **`aws-credentials` trong cluster** chứa **Access key IAM** để **controller ESO** gọi API AWS (`GetSecretValue`). Không có nó (hoặc không có auth tương đương), ESO không đọc được AWS.
 
-   IAM cần `secretsmanager:GetSecretValue` trên prefix secret của project (IAM user ESO trong `terraform/live`).
+   IAM cần `secretsmanager:GetSecretValue` trên prefix secret của project (IAM user ESO trong `terraform/environments/management`).
 
    ```bash
    # paste key thật vào 2 biến này rồi chạy 1 lần
@@ -300,7 +300,7 @@ Dùng khi máy/cluster có egress ra AWS và bạn đã có secret JSON trên Se
    **Khuyen nghi (tranh nhap tay sai key): dong bo tu Terraform state**
 
    ```bash
-   cd ~/go-micro-infra/terraform/live
+   cd ~/go-micro-infra/terraform/environments/management
    TF_AKID="$(terraform output -raw eso_access_key_id)"
    TF_SAK="$(terraform output -raw eso_secret_access_key)"
 

@@ -1,7 +1,7 @@
 resource "aws_secretsmanager_secret" "app_credentials" {
   name                    = "${var.project_name}/${var.environment}/app-credentials${var.app_credentials_name_suffix}"
   description             = "Application credentials for ${var.environment}"
-  recovery_window_in_days = 0
+  recovery_window_in_days = var.recovery_window_in_days
 }
 
 resource "aws_secretsmanager_secret_version" "app_credentials" {
