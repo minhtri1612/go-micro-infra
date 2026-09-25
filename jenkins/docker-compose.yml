@@ -18,6 +18,12 @@ services:
       DOCKERHUB_TOKEN: ${DOCKERHUB_TOKEN:?set in .env}
       GITHUB_USER: ${GITHUB_USER:?set in .env}
       GITHUB_PAT: ${GITHUB_PAT:?set in .env}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set in .env}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set in .env}
+      TF_STATE_BUCKET: ${TF_STATE_BUCKET:?set in .env}
+      TF_ADMIN_INGRESS_CIDR: ${TF_ADMIN_INGRESS_CIDR:?set in .env}
+      TF_DB_PASSWORD: ${TF_DB_PASSWORD:?set in .env}
+      TF_STRIPE_SECRET_KEY: ${TF_STRIPE_SECRET_KEY:?set in .env}
     volumes:
       - jenkins_home:/var/jenkins_home
       - ./casc:/var/jenkins_home/casc_configs:ro

@@ -9,8 +9,6 @@ data "http" "my_public_ip" {
 }
 
 locals {
-  admin_ingress_cidr = coalesce(
-    var.admin_ingress_cidr,
-    "${chomp(data.http.my_public_ip[0].response_body)}/32"
-  )
+  detected_ip        = length(data.http.my_public_ip) > 0 ? "${chomp(data.http.my_public_ip[0].response_body)}/32" : null
+  admin_ingress_cidr = coalesce(var.admin_ingress_cidr, local.detected_ip)
 }

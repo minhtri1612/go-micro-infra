@@ -1,0 +1,58 @@
+pipeline {
+  agent any
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    skipDefaultCheckout(false)
+  }
+  parameters {
+    choice(name: 'ACTION', choices: ['apply', 'destroy-target'], description: 'apply = plan -out + apply tfplan on main. destroy-target = terraform destroy -target (allowlist). Never full-stack destroy (would kill this Jenkins).')
+    string(name: 'TARGET', defaultValue: '', description: 'Required when ACTION=destroy-target. Allowlist: module.kind_host')
+    booleanParam(name: 'SKIP_PR_COMPARE', defaultValue: true, description: 'true = do not compare with PR plan (lab / no PR). false = fail if counts differ.')
+    string(name: 'PR_PLAN_SUMMARY', defaultValue: '', description: 'When SKIP_PR_COMPARE=false: exact string add=N change=N destroy=N from plan job')
+  }
+  environment {
+    AWS_DEFAULT_REGION = 'ap-southeast-2'
+  }
+  stages {
+    stage('Guard main') {
+      steps {
+        sh '''
+          set -euo pipefail
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          git checkout -f origin/main
+          git rev-parse HEAD
+          git merge-base --is-ancestor HEAD origin/main
+        '''
+      }
+    }
+    stage('Terraform') {
+      steps {
+        withCredentials([
+          usernamePassword(credentialsId: 'aws-terraform', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
+          string(credentialsId: 'tf-db-password', variable: 'TF_VAR_db_password'),
+          string(credentialsId: 'tf-stripe-secret-key', variable: 'TF_VAR_stripe_secret_key')
+        ]) {
+          withEnv([
+            "TF_VAR_admin_ingress_cidr=${env.TF_ADMIN_INGRESS_CIDR}",
+            "SKIP_PR_COMPARE=${params.SKIP_PR_COMPARE}",
+            "PR_PLAN_SUMMARY=${params.PR_PLAN_SUMMARY}"
+          ]) {
+            script {
+              if (params.ACTION == 'destroy-target') {
+                sh "chmod +x jenkins/terraform/run.sh && jenkins/terraform/run.sh destroy-target '${params.TARGET}'"
+              } else {
+                sh 'chmod +x jenkins/terraform/run.sh && jenkins/terraform/run.sh apply'
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  post {
+    always {
+      archiveArtifacts artifacts: 'terraform/environments/management/tfplan,terraform/environments/management/plan-summary.txt,terraform/environments/management/plan.txt', allowEmptyArchive: true, fingerprint: true
+    }
+  }
+}

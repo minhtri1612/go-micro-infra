@@ -33,7 +33,28 @@ Webhook GitHub từng service repo:
 
 event: `push`.
 
-Job: `services/product`, `services/order`, …
+Job: `services/product`, `services/order`, … và `platform/terraform-management-plan`, `platform/terraform-management-apply`.
+
+## Terraform trên Jenkins
+
+Không `ciTerraform`. Job DSL tạo folder `platform/`. Pipeline lấy **Jenkinsfile từ `main`**.
+
+Trên EC2 Jenkins, `.env` thêm AWS + `TF_*` (xem `.env.example`). IAM user phải plan/apply được stack management (S3 state, EC2, SM). **Không** destroy cả stack từ job (chết Jenkins).
+
+```bash
+cd ~/go-micro-infra/jenkins
+# sửa .env: JENKINS_URL=http://32.237.61.14:8080/ + AWS + TF_*
+git pull
+docker compose up -d --build
+```
+
+CasC load lúc start. UI: http://32.237.61.14:8080
+
+- **Plan:** `platform/terraform-management-plan` — `GIT_REF=origin/main`, không apply.
+- **Tạo lại Kind (sau destroy-target):** `platform/terraform-management-apply` — ACTION=`apply`, SKIP_PR_COMPARE=true.
+- **Destroy Kind qua Jenkins:** ACTION=`destroy-target`, TARGET=`module.kind_host`.
+
+Laptop không apply/destroy management nữa, trừ khi Jenkins chết.
 
 ## Trách nhiệm
 

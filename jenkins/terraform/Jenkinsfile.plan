@@ -1,0 +1,62 @@
+pipeline {
+  agent any
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    skipDefaultCheckout(false)
+  }
+  parameters {
+    string(name: 'GIT_REF', defaultValue: 'origin/main', description: 'Branch/SHA to plan (PR head). Jenkinsfile itself is always from main.')
+    string(name: 'GH_PR_NUMBER', defaultValue: '', description: 'Optional GitHub PR number to comment plan summary')
+  }
+  environment {
+    AWS_DEFAULT_REGION = 'ap-southeast-2'
+  }
+  stages {
+    stage('Checkout GIT_REF') {
+      steps {
+        sh '''
+          set -euo pipefail
+          git fetch --no-tags origin +refs/heads/*:refs/remotes/origin/*
+          git checkout -f "${GIT_REF}"
+          git rev-parse HEAD
+        '''
+      }
+    }
+    stage('fmt validate plan') {
+      steps {
+        withCredentials([
+          usernamePassword(credentialsId: 'aws-terraform', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
+          string(credentialsId: 'tf-db-password', variable: 'TF_VAR_db_password'),
+          string(credentialsId: 'tf-stripe-secret-key', variable: 'TF_VAR_stripe_secret_key')
+        ]) {
+          withEnv(["TF_VAR_admin_ingress_cidr=${env.TF_ADMIN_INGRESS_CIDR}"]) {
+            sh 'chmod +x jenkins/terraform/run.sh && jenkins/terraform/run.sh plan'
+          }
+        }
+      }
+    }
+    stage('Comment PR') {
+      when { expression { return params.GH_PR_NUMBER?.trim() } }
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'github-go-micro-pat', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_PAT')]) {
+          sh '''
+            set -euo pipefail
+            BODY="terraform plan (management)\\n\\n$(cat terraform/environments/management/plan-summary.txt)\\n\\nBuild: ${BUILD_URL}"
+            jq -n --arg body "$BODY" '{body: $body}' | curl -sS -X POST \
+              -H "Authorization: Bearer ${GITHUB_PAT}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "Content-Type: application/json" \
+              --data-binary @- \
+              "https://api.github.com/repos/minhtri1612/go-micro-infra/issues/${GH_PR_NUMBER}/comments"
+          '''
+        }
+      }
+    }
+  }
+  post {
+    always {
+      archiveArtifacts artifacts: 'terraform/environments/management/plan-summary.txt,terraform/environments/management/plan.txt', allowEmptyArchive: true, fingerprint: true
+    }
+  }
+}

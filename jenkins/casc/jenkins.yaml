@@ -11,6 +11,13 @@ jenkins:
   authorizationStrategy:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "TF_STATE_BUCKET"
+            value: "${TF_STATE_BUCKET}"
+          - key: "TF_ADMIN_INGRESS_CIDR"
+            value: "${TF_ADMIN_INGRESS_CIDR}"
 
 credentials:
   system:
@@ -28,6 +35,22 @@ credentials:
               description: "GitHub PAT (clone service repos + push gitops)"
               username: "${GITHUB_USER}"
               password: "${GITHUB_PAT}"
+          - usernamePassword:
+              id: "aws-terraform"
+              scope: GLOBAL
+              description: "AWS for Terraform plan/apply on Jenkins (lab: same key; split plan-only later)"
+              username: "${AWS_ACCESS_KEY_ID}"
+              password: "${AWS_SECRET_ACCESS_KEY}"
+          - string:
+              id: "tf-db-password"
+              scope: GLOBAL
+              description: "TF_VAR_db_password"
+              secret: "${TF_DB_PASSWORD}"
+          - string:
+              id: "tf-stripe-secret-key"
+              scope: GLOBAL
+              description: "TF_VAR_stripe_secret_key"
+              secret: "${TF_STRIPE_SECRET_KEY}"
 
 unclassified:
   location:
