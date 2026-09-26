@@ -62,3 +62,31 @@ output "hello_lambda_function_name" {
 output "hello_lambda_arn" {
   value = aws_lambda_function.hello.arn
 }
+
+output "tf_plan_iam_user" {
+  value = aws_iam_user.tf_plan.name
+}
+
+output "tf_apply_iam_user" {
+  value = aws_iam_user.tf_apply.name
+}
+
+output "tf_plan_access_key_id" {
+  value     = aws_iam_access_key.tf_plan.id
+  sensitive = true
+}
+
+output "tf_plan_secret_access_key" {
+  value     = aws_iam_access_key.tf_plan.secret
+  sensitive = true
+}
+
+output "tf_apply_access_key_id" {
+  value     = aws_iam_access_key.tf_apply.id
+  sensitive = true
+}
+
+output "tf_apply_secret_access_key" {
+  value     = aws_iam_access_key.tf_apply.secret
+  sensitive = true
+}

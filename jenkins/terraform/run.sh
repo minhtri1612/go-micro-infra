@@ -58,7 +58,7 @@ case "${ACTION}" in
   apply)
     tf plan -input=false -no-color -out=tfplan | tee "${CHDIR}/plan.txt"
     summarize_plan "${CHDIR}/plan.txt" | tee "${CHDIR}/plan-summary.txt"
-    if [[ "${SKIP_PR_COMPARE:-true}" != "true" ]]; then
+    if [[ "${SKIP_PR_COMPARE:-false}" != "true" ]]; then
       : "${PR_PLAN_SUMMARY:?PR_PLAN_SUMMARY required when SKIP_PR_COMPARE=false}"
       got="$(cat "${CHDIR}/plan-summary.txt")"
       if [[ "${got}" != "${PR_PLAN_SUMMARY}" ]]; then

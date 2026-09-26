@@ -1,0 +1,4 @@
+# Lab: 1 DevOps — do not enable required reviews on GitHub (self-approve lockout).
+# When there are 2+ DevOps, require this CODEOWNERS on terraform/** and jenkins/**.
+/terraform/ @minhtri1612
+/jenkins/ @minhtri1612
