@@ -31,7 +31,7 @@ variable "public_subnet_cidr" {
 
 variable "kind_instance_type" {
   type    = string
-  default = "t3.large"
+  default = "t3.xlarge"
 }
 
 variable "kind_root_volume_size" {
