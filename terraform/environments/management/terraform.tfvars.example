@@ -5,7 +5,7 @@ project_name = "go-micro"
 # Omit admin_ingress_cidr to lock Jenkins:8080 and Argo:18080 to your current public IP.
 # admin_ingress_cidr = "203.0.113.10/32"
 
-kind_instance_type    = "t3.large"
+kind_instance_type    = "t3.xlarge"
 jenkins_instance_type = "t4g.small"
 
 environments = ["dev", "prod"]

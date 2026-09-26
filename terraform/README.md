@@ -139,7 +139,7 @@ kubectl -n external-secrets create secret generic aws-credentials \
 
 | | Kind | Jenkins |
 |---|---|---|
-| Type | t3.large (amd64, Spot persistent / stop) | t4g.small (arm64, Spot persistent / stop) |
+| Type | t3.xlarge (amd64, Spot persistent / stop) | t4g.small (arm64, Spot persistent / stop) |
 | Disk | 40 GiB | 20 GiB |
 | Ports | 18080 | 8080 |
 | Login | SSM (no .pem) | SSM (no .pem) |
