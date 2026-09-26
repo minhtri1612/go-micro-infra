@@ -16,6 +16,7 @@ module "kind_host" {
   name                 = "kind-host"
   project_name         = var.project_name
   instance_type        = var.kind_instance_type
+  ami_id               = var.kind_ami_id
   ami_arch             = "amd64"
   use_spot             = true
   subnet_id            = module.vpc.public_subnet_id
@@ -24,7 +25,9 @@ module "kind_host" {
   ingress_cidr         = local.admin_ingress_cidr
   allowed_tcp_ports    = [18080]
   root_volume_size     = var.kind_root_volume_size
-  user_data            = file("${path.module}/cloud-init-kind.sh")
+  # Snapshot already has Docker/Kind. Empty user_data so cloud-init does not
+  # reinstall Docker on the new instance-id and risk the clusters.
+  user_data = ""
 }
 
 # Jenkins lives on this EC2. First apply is local (Jenkins does not exist yet).
@@ -38,6 +41,7 @@ module "jenkins_host" {
   name                 = "jenkins-host"
   project_name         = var.project_name
   instance_type        = var.jenkins_instance_type
+  ami_id               = var.jenkins_ami_id
   ami_arch             = "arm64"
   use_spot             = true
   subnet_id            = module.vpc.public_subnet_id

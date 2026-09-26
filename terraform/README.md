@@ -38,7 +38,9 @@ Job Jenkins **không** apply `bootstrap/` (allowlist chỉ `management` khi có 
 
 Apply sau này có thể đụng `module.jenkins_host` (AMI, SG :8080, Spot, instance type). Nếu apply fail giữa chừng làm chết Jenkins thì **không còn job** để sửa — quay lại **apply local** trên laptop (cùng `backend.hcl`).
 
-Review kỹ plan nào có change/destroy trên `module.jenkins_host`. AMI đã `ignore_changes`; `user_data_replace_on_change = false`. Đổi SG chặn IP của bạn / port 8080 = mất UI + webhook.
+Review kỹ plan nào có change/destroy trên `module.jenkins_host`. `user_data_replace_on_change = false`. Pin `jenkins_ami_id` / `kind_ami_id`. Đổi SG chặn IP của bạn / port 8080 = mất UI + webhook.
+
+**Spot không đổi instance type tại chỗ** (Jenkins apply `t3.large`→`t3.xlarge` sẽ fail). Resize Kind: `create-image` instance đang chạy → set `kind_ami_id` + `kind_instance_type` → apply **replace** instance (disk Kind/Argo nằm trong AMI). Không dùng Ubuntu AMI mới. `kind_host` user_data để trống khi boot từ snapshot. Sau boot, Docker IP Kind có thể đổi → re-register Argo cluster secret.
 
 ## State key
 
@@ -143,7 +145,7 @@ kubectl -n external-secrets create secret generic aws-credentials \
 | Disk | 40 GiB | 20 GiB |
 | Ports | 18080 | 8080 |
 | Login | SSM (no .pem) | SSM (no .pem) |
-| user_data | Docker, kind, kubectl 1.28, helm, argocd, SSM agent | Docker + compose + SSM agent |
+| user_data | snapshot AMI: empty (Kind already on disk). Fresh Ubuntu: Docker, kind, kubectl 1.28, helm, argocd, SSM agent | Docker + compose + SSM agent |
 
 Region mặc định `ap-southeast-2`. Không cần EC2 key pair.
 
