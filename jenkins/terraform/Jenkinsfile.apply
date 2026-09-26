@@ -6,13 +6,14 @@ pipeline {
     skipDefaultCheckout(false)
   }
   parameters {
-    choice(name: 'ACTION', choices: ['apply', 'destroy-target'], description: 'apply = plan -out + apply tfplan on main. destroy-target = terraform destroy -target (allowlist). Never full-stack destroy (would kill this Jenkins).')
+    choice(name: 'ACTION', choices: ['apply', 'destroy-target'], description: 'Webhook merge always apply. destroy-target is manual only.')
     string(name: 'TARGET', defaultValue: '', description: 'Required when ACTION=destroy-target. Allowlist: module.kind_host')
-    booleanParam(name: 'SKIP_PR_COMPARE', defaultValue: true, description: 'true = do not compare with PR plan (lab / no PR). false = fail if counts differ.')
-    string(name: 'PR_PLAN_SUMMARY', defaultValue: '', description: 'When SKIP_PR_COMPARE=false: exact string add=N change=N destroy=N from plan job')
+    booleanParam(name: 'SKIP_PR_COMPARE', defaultValue: false, description: 'false = require PR plan summary match. true only for emergency / destroy-target.')
+    string(name: 'PR_PLAN_SUMMARY', defaultValue: '', description: 'Optional override. Else read <!-- tf-plan-summary --> from merged PR.')
   }
   environment {
     AWS_DEFAULT_REGION = 'ap-southeast-2'
+    GITHUB_REPO        = 'minhtri1612/go-micro-infra'
   }
   stages {
     stage('Guard main') {
@@ -26,19 +27,51 @@ pipeline {
         '''
       }
     }
+    stage('Detect terraform') {
+      when { expression { return params.ACTION == 'apply' } }
+      steps {
+        script {
+          def rc = sh(returnStatus: true, script: '''
+            set -euo pipefail
+            if git rev-parse --verify --quiet HEAD^ >/dev/null; then
+              git diff --name-only HEAD^ HEAD
+            else
+              git diff --name-only HEAD
+            fi | grep -qE "^terraform/"
+          ''')
+          env.TF_CHANGED = (rc == 0) ? '1' : '0'
+          echo "TF_CHANGED=${env.TF_CHANGED}"
+        }
+      }
+    }
     stage('Terraform') {
+      when {
+        anyOf {
+          expression { return params.ACTION == 'destroy-target' }
+          environment name: 'TF_CHANGED', value: '1'
+        }
+      }
       steps {
         withCredentials([
-          usernamePassword(credentialsId: 'aws-terraform', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
+          usernamePassword(credentialsId: 'aws-terraform-apply', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
           string(credentialsId: 'tf-db-password', variable: 'TF_VAR_db_password'),
-          string(credentialsId: 'tf-stripe-secret-key', variable: 'TF_VAR_stripe_secret_key')
+          string(credentialsId: 'tf-stripe-secret-key', variable: 'TF_VAR_stripe_secret_key'),
+          usernamePassword(credentialsId: 'github-go-micro-pat', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_PAT')
         ]) {
-          withEnv([
-            "TF_VAR_admin_ingress_cidr=${env.TF_ADMIN_INGRESS_CIDR}",
-            "SKIP_PR_COMPARE=${params.SKIP_PR_COMPARE}",
-            "PR_PLAN_SUMMARY=${params.PR_PLAN_SUMMARY}"
-          ]) {
-            script {
+          script {
+            def skipCompare = params.SKIP_PR_COMPARE || params.ACTION == 'destroy-target'
+            def summary = (params.PR_PLAN_SUMMARY ?: '').trim()
+            if (!skipCompare && !summary) {
+              summary = sh(returnStdout: true, script: 'chmod +x jenkins/terraform/github.sh && jenkins/terraform/github.sh pr-summary "$(git rev-parse HEAD)"').trim()
+              if (!summary) {
+                error('No <!-- tf-plan-summary --> on merged PR. Re-run plan on the PR or set SKIP_PR_COMPARE for emergency.')
+              }
+            }
+            withEnv([
+              "TF_VAR_admin_ingress_cidr=${env.TF_ADMIN_INGRESS_CIDR}",
+              "SKIP_PR_COMPARE=${skipCompare}",
+              "PR_PLAN_SUMMARY=${summary}"
+            ]) {
               if (params.ACTION == 'destroy-target') {
                 sh "chmod +x jenkins/terraform/run.sh && jenkins/terraform/run.sh destroy-target '${params.TARGET}'"
               } else {

@@ -11,4 +11,4 @@ pipeline-stage-view
 workflow-api
 workflow-cps
 workflow-scm-step
-workflow-support
+generic-webhook-trigger

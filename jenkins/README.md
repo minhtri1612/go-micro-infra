@@ -35,26 +35,49 @@ event: `push`.
 
 Job: `services/product`, `services/order`, … và `platform/terraform-management-plan`, `platform/terraform-management-apply`.
 
-## Terraform trên Jenkins
+## Terraform trên Jenkins (PR → plan → merge → apply)
 
-Không `ciTerraform`. Job DSL tạo folder `platform/`. Pipeline lấy **Jenkinsfile từ `main`**.
+Không `ciTerraform`. Job DSL folder `platform/`. Jenkinsfile **luôn từ `main`**.
 
-Trên EC2 Jenkins, `.env` thêm AWS + `TF_*` (xem `.env.example`). IAM user phải plan/apply được stack management (S3 state, EC2, SM). **Không** destroy cả stack từ job (chết Jenkins).
+1. PR đụng `terraform/**` → GitHub `pull_request` → job **plan** (check `terraform-plan`, comment summary). PR không đụng terraform → check xanh, skip plan.
+2. Merge `main` → GitHub `push` → job **apply** (re-plan, so sánh `<!-- tf-plan-summary -->`, `apply tfplan`).
+3. CODEOWNERS ghi owner; lab 1 DevOps **không** bật required reviews.
 
-```bash
-cd ~/go-micro-infra/jenkins
-# sửa .env: JENKINS_URL=http://32.237.61.14:8080/ + AWS + TF_*
-git pull
-docker compose up -d --build
+### Trên EC2 Jenkins
+
+Thêm vào `.env` (xem `.env.example`):
+
+```
+TF_PLAN_WEBHOOK_TOKEN=<openssl rand -hex 24>
+TF_APPLY_WEBHOOK_TOKEN=<openssl rand -hex 24>
 ```
 
-CasC load lúc start. UI: http://32.237.61.14:8080
+`AWS_PLAN_*` / `AWS_APPLY_*` tạm bằng `AWS_*` cho đến khi apply tạo user `go-micro-tf-plan` / `go-micro-tf-apply`.
 
-- **Plan:** `platform/terraform-management-plan` — `GIT_REF=origin/main`, không apply.
-- **Tạo lại Kind (sau destroy-target):** `platform/terraform-management-apply` — ACTION=`apply`, SKIP_PR_COMPARE=true.
-- **Destroy Kind qua Jenkins:** ACTION=`destroy-target`, TARGET=`module.kind_host`.
+```bash
+cd ~/go-micro-infra && git pull
+cd jenkins
+docker compose up -d --build --force-recreate
+# đợi "Jenkins is fully up and running"
+set -a && source .env && set +a
+chmod +x github/configure-repo.sh
+./github/configure-repo.sh
+```
 
-Laptop không apply/destroy management nữa, trừ khi Jenkins chết.
+Webhook GitHub **service** vẫn `http://<jenkins>:8080/github-webhook/` event `push`.
+
+Terraform:
+
+- plan: `http://<jenkins>:8080/generic-webhook-trigger/invoke?token=<TF_PLAN_WEBHOOK_TOKEN>` event `pull_request`
+- apply: `...?token=<TF_APPLY_WEBHOOK_TOKEN>` event `push`
+
+### Manual / emergency
+
+- Plan tay: `GIT_REF` + `GH_PR_NUMBER`
+- Apply tay: ACTION=`apply`, `SKIP_PR_COMPARE=true` chỉ khi không có PR plan
+- Destroy Kind: ACTION=`destroy-target`, TARGET=`module.kind_host`
+
+Laptop không apply management trừ khi Jenkins chết.
 
 ## Trách nhiệm
 
