@@ -30,6 +30,8 @@ module "kind_host" {
 # Jenkins lives on this EC2. First apply is local (Jenkins does not exist yet).
 # Later Jenkins jobs apply THIS same stack — do not replace/destroy this instance
 # or close SG :8080 without a local-apply fallback (see terraform/README.md).
+# :8080 must be world-open so GitHub Cloud webhooks can hit generic-webhook-trigger
+# (admin_ingress_cidr is only the laptop; GitHub IPs are not that /32).
 module "jenkins_host" {
   source = "../../modules/ubuntu-host"
 
@@ -41,7 +43,7 @@ module "jenkins_host" {
   subnet_id            = module.vpc.public_subnet_id
   vpc_id               = module.vpc.vpc_id
   iam_instance_profile = module.ec2_ssm.instance_profile_name
-  ingress_cidr         = local.admin_ingress_cidr
+  ingress_cidr         = "0.0.0.0/0"
   allowed_tcp_ports    = [8080]
   root_volume_size     = var.jenkins_root_volume_size
   user_data            = file("${path.module}/cloud-init-jenkins.sh")

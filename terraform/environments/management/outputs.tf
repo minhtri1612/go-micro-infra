@@ -63,6 +63,14 @@ output "hello_lambda_arn" {
   value = aws_lambda_function.hello.arn
 }
 
+output "hello_java_lambda_function_name" {
+  value = aws_lambda_function.hello_java.function_name
+}
+
+output "hello_java_lambda_arn" {
+  value = aws_lambda_function.hello_java.arn
+}
+
 output "tf_plan_iam_user" {
   value = aws_iam_user.tf_plan.name
 }

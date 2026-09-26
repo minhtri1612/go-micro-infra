@@ -36,3 +36,22 @@ resource "aws_lambda_function" "hello" {
   memory_size      = 128
   timeout          = 10
 }
+
+data "archive_file" "hello_java" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/hello_java"
+  output_path = "${path.module}/lambda/hello-java.zip"
+  excludes    = ["**/*.java"]
+}
+
+resource "aws_lambda_function" "hello_java" {
+  function_name    = "${var.project_name}-hello-java"
+  filename         = data.archive_file.hello_java.output_path
+  source_code_hash = data.archive_file.hello_java.output_base64sha256
+  role             = aws_iam_role.hello_lambda.arn
+  handler          = "example.Handler::handleRequest"
+  runtime          = "java21"
+  architectures    = ["arm64"]
+  memory_size      = 256
+  timeout          = 10
+}
