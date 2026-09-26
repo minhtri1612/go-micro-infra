@@ -16,3 +16,4 @@ jenkins/.env
 *.tfvars
 !*.tfvars.example
 **/backend.hcl
+terraform/environments/management/lambda/*.zip

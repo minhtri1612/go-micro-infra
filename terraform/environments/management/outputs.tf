@@ -54,3 +54,11 @@ output "eso_secret_access_key" {
   value     = module.eso_iam.eso_secret_access_key
   sensitive = true
 }
+
+output "hello_lambda_function_name" {
+  value = aws_lambda_function.hello.function_name
+}
+
+output "hello_lambda_arn" {
+  value = aws_lambda_function.hello.arn
+}
