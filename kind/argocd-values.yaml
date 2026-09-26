@@ -9,6 +9,9 @@ controller:
 server:
   networkPolicy:
     create: false
+  service:
+    type: NodePort
+    nodePortHttps: 30443
 
 applicationSet:
   networkPolicy:
