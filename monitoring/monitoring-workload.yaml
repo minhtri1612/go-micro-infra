@@ -58,6 +58,7 @@ kube-state-metrics:
     type: ClusterIP
 # Disable system components to avoid 'kube-system' namespace permission issues in Kind
 # (AppProject dest only allows monitoring/microservices/databases/traefik/argo-rollouts)
+# Chart key is coreDns (not kubeCoreDns). Default enabled:true still emits Service kube-system/kps-wl-coredns.
 kubeApiServer:
   enabled: false
 kubelet:
@@ -70,7 +71,7 @@ kubeEtcd:
   enabled: false
 kubeProxy:
   enabled: false
-kubeCoreDns:
+coreDns:
   enabled: false
 kubeDns:
   enabled: false
