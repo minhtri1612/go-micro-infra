@@ -68,13 +68,13 @@ kubectl --context kind-management -n argocd rollout restart statefulset/argocd-a
 kubectl --context kind-management -n argocd rollout status deploy/argocd-repo-server --timeout=180s
 kubectl --context kind-management -n argocd rollout status statefulset/argocd-application-controller --timeout=180s
 
-kubectl -n argocd port-forward svc/argocd-server 18080:443
-
-kubectl -n argocd port-forward --address 0.0.0.0 svc/argocd-server 18080:443
-
+# NodePort 30443 -> EC2 :18080 (kind extraPortMappings). Khong port-forward.
+kubectl --context kind-management -n argocd get svc argocd-server
 ```
 
-Terminal khác:
+UI: `https://<kind EIP>:18080` (SG :18080, IP nha). Cert tu ky.
+
+Tren EC2:
 
 ```bash
 rm -rf ~/.argocd
@@ -89,7 +89,7 @@ argocd --grpc-web account get-user-info
 
 Jenkins dựng **trước / riêng**: `jenkins/docker-compose.yml` trên EC2 CI. Không Helm, không Argo Application, không port `18081`.
 
-Xem `jenkins/README.md`. Argo CD vẫn port-forward `localhost:18080` ở mục trên.
+Xem `jenkins/README.md`. Argo CD: `https://<kind EIP>:18080` (NodePort, khong port-forward).
 
 ### 2.2) ArgoCD Rollout UI Extension (xem % traffic ngay trên Argo UI)
 
