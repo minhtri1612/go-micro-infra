@@ -57,6 +57,7 @@ kube-state-metrics:
   service:
     type: ClusterIP
 # Disable system components to avoid 'kube-system' namespace permission issues in Kind
+# (AppProject dest only allows monitoring/microservices/databases/traefik/argo-rollouts)
 kubeApiServer:
   enabled: false
 kubelet:
@@ -68,4 +69,8 @@ kubeScheduler:
 kubeEtcd:
   enabled: false
 kubeProxy:
+  enabled: false
+kubeCoreDns:
+  enabled: false
+kubeDns:
   enabled: false
