@@ -6,7 +6,9 @@ project_name = "go-micro"
 # admin_ingress_cidr = "203.0.113.10/32"
 
 kind_instance_type    = "t3.xlarge"
+kind_ami_id           = "ami-0431580b981f6110a"
 jenkins_instance_type = "t4g.small"
+jenkins_ami_id        = "ami-0da8007d942cd1875"
 
 environments = ["dev", "prod"]
 db_user      = "postgres"

@@ -1,4 +1,5 @@
 data "aws_ami" "ubuntu" {
+  count       = var.ami_id == null ? 1 : 0
   most_recent = true
   owners      = ["099720109477"]
 
@@ -47,7 +48,7 @@ resource "aws_security_group" "this" {
 }
 
 resource "aws_instance" "this" {
-  ami                         = data.aws_ami.ubuntu.id
+  ami                         = var.ami_id != null ? var.ami_id : data.aws_ami.ubuntu[0].id
   instance_type               = var.instance_type
   subnet_id                   = var.subnet_id
   vpc_security_group_ids      = [aws_security_group.this.id]
@@ -79,7 +80,7 @@ resource "aws_instance" "this" {
   }
 
   lifecycle {
-    ignore_changes = [ami]
+    create_before_destroy = true
   }
 }
 

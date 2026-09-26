@@ -11,10 +11,16 @@ variable "instance_type" {
   type = string
 }
 
+variable "ami_id" {
+  type        = string
+  default     = null
+  description = "Pin a snapshot AMI. Null = latest Ubuntu for ami_arch. Spot cannot change instance type in place; resize = new instance from this AMI."
+}
+
 variable "ami_arch" {
   type        = string
   default     = "amd64"
-  description = "Ubuntu AMI arch: amd64 (t3) or arm64 (t4g)."
+  description = "Ubuntu AMI arch: amd64 (t3) or arm64 (t4g). Ignored when ami_id is set."
 
   validation {
     condition     = contains(["amd64", "arm64"], var.ami_arch)

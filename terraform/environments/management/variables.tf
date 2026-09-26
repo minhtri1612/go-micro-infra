@@ -34,6 +34,18 @@ variable "kind_instance_type" {
   default = "t3.xlarge"
 }
 
+variable "kind_ami_id" {
+  type        = string
+  default     = "ami-0431580b981f6110a"
+  description = "Snapshot of the running Kind host (Argo/Kind on disk). Spot resize launches a new instance from this AMI. Do not use latest Ubuntu or Kind is wiped."
+}
+
+variable "jenkins_ami_id" {
+  type        = string
+  default     = "ami-0da8007d942cd1875"
+  description = "Pin the running Jenkins AMI so dropping ignore_changes[ami] does not replace Jenkins."
+}
+
 variable "kind_root_volume_size" {
   type    = number
   default = 40
