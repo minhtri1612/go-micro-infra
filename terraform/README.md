@@ -143,7 +143,7 @@ kubectl -n external-secrets create secret generic aws-credentials \
 |---|---|---|
 | Type | t3.xlarge (amd64, Spot persistent / stop) | t4g.small (arm64, Spot persistent / stop) |
 | Disk | 40 GiB | 20 GiB |
-| Ports | 18080 | 8080 |
+| Ports | 18080 Argo, 32000 Grafana, 32090 Prometheus | 8080 |
 | Login | SSM (no .pem) | SSM (no .pem) |
 | user_data | snapshot AMI: empty (Kind already on disk). Fresh Ubuntu: Docker, kind, kubectl 1.28, helm, argocd, SSM agent | Docker + compose + SSM agent |
 

@@ -16,7 +16,7 @@ variable "stack" {
 variable "admin_ingress_cidr" {
   type        = string
   default     = null
-  description = "CIDR allowed to reach Jenkins :8080 and Argo port-forward :18080. Null = your public IP at apply time. Shell access is SSM, not SSH."
+  description = "CIDR allowed to reach Jenkins :8080, Argo :18080, Grafana :32000, Prometheus :32090. Null = your public IP at apply time. Shell access is SSM, not SSH."
 }
 
 variable "vpc_cidr" {

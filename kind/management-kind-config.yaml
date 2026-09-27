@@ -23,3 +23,13 @@ nodes:
         hostPort: 18080
         listenAddress: "0.0.0.0"
         protocol: TCP
+      # Grafana / Prometheus NodePorts on management (kube-prometheus-stack).
+      # Only applied at `kind create`. Existing cluster: kind/host-nodeport-proxy.sh
+      - containerPort: 32000
+        hostPort: 32000
+        listenAddress: "0.0.0.0"
+        protocol: TCP
+      - containerPort: 32090
+        hostPort: 32090
+        listenAddress: "0.0.0.0"
+        protocol: TCP

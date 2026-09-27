@@ -15,8 +15,18 @@ output "kind_ssm_command" {
 }
 
 output "argo_url" {
-  description = "Argo CD after port-forward on the Kind host (18080)."
-  value       = "http://${module.kind_host.public_ip}:18080"
+  description = "Argo CD UI (Kind extraPortMappings 18080 → 30443)."
+  value       = "https://${module.kind_host.public_ip}:18080"
+}
+
+output "grafana_url" {
+  description = "Grafana UI (NodePort 32000). Existing Kind cluster needs kind/host-nodeport-proxy.sh on the EC2 host."
+  value       = "http://${module.kind_host.public_ip}:32000"
+}
+
+output "prometheus_url" {
+  description = "Management Prometheus (NodePort 32090)."
+  value       = "http://${module.kind_host.public_ip}:32090"
 }
 
 output "jenkins_instance_id" {
