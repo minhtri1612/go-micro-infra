@@ -24,16 +24,275 @@ data:
           }
         ]
       },
+      "description": "Workload scrape health + gin HTTP. Cluster comes from up{}, not gin_request_total. HTTP panels stay empty until something hits /health or /api.",
       "editable": true,
       "fiscalYearStartMonth": 0,
-      "graphTooltip": 0,
+      "graphTooltip": 1,
       "id": null,
       "links": [],
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "green",
+                    "value": 4
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "id": 10,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "11.1.0",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(up{cluster=~\"$cluster\", pod=~\"($service)-.*\"}) or vector(0)",
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Targets up",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "green",
+                    "value": 4
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "id": 11,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "11.1.0",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(kube_pod_status_ready{cluster=~\"$cluster\", pod=~\"($service)-.*\", condition=\"true\"}) or vector(0)",
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Ready pods",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "orange",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "none",
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 0
+          },
+          "id": 12,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "11.1.0",
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(increase(gin_request_total{cluster=~\"$cluster\", pod=~\"($service)-.*\"}[5m])) or vector(0)",
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "HTTP requests (5m)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "max": 100,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 90
+                  },
+                  {
+                    "color": "green",
+                    "value": 98
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 0
+          },
+          "id": 13,
+          "options": {
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "100 * (1 - ((sum(increase(gin_request_total{cluster=~\"$cluster\", pod=~\"($service)-.*\", code=~\"5..\"}[5m])) or vector(0)) / clamp_min((sum(increase(gin_request_total{cluster=~\"$cluster\", pod=~\"($service)-.*\"}[5m])) or vector(0)), 1)))",
+              "refId": "A"
+            }
+          ],
+          "title": "Success rate %",
+          "type": "gauge"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
@@ -41,30 +300,27 @@ data:
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
                 "drawStyle": "line",
                 "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineInterpolation": "linear",
                 "lineWidth": 2,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
                 "showPoints": "never",
                 "spanNulls": false,
                 "stacking": {
                   "group": "A",
                   "mode": "none"
+                },
+                "gradientMode": "none",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "lineInterpolation": "linear",
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
                 },
                 "thresholdsStyle": {
                   "mode": "off"
@@ -77,10 +333,6 @@ data:
                   {
                     "color": "green",
                     "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 1
                   }
                 ]
               },
@@ -92,7 +344,7 @@ data:
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 0
+            "y": 4
           },
           "id": 1,
           "options": {
@@ -116,18 +368,45 @@ data:
               "refId": "A"
             }
           ],
-          "title": "RPS By Pod",
+          "title": "RPS by pod",
           "type": "timeseries"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineWidth": 2,
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "gradientMode": "none",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "lineInterpolation": "linear",
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
               },
               "mappings": [],
               "thresholds": {
@@ -136,10 +415,6 @@ data:
                   {
                     "color": "green",
                     "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 0.3
                   }
                 ]
               },
@@ -151,7 +426,7 @@ data:
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 0
+            "y": 4
           },
           "id": 2,
           "options": {
@@ -169,19 +444,19 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "histogram_quantile(0.95, sum(increase(gin_request_duration_bucket{cluster=~\"$cluster\", pod=~\"($service)-.*\"}[5m])) by (le,pod))",
+              "expr": "histogram_quantile(0.95, sum(increase(gin_request_duration_bucket{cluster=~\"$cluster\", pod=~\"($service)-.*\"}[5m])) by (le, pod))",
               "legendFormat": "{{pod}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "P95 Latency By Pod",
+          "title": "P95 latency by pod",
           "type": "timeseries"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
@@ -189,144 +464,8 @@ data:
                 "mode": "thresholds"
               },
               "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "red",
-                    "value": null
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 90
-                  },
-                  {
-                    "color": "green",
-                    "value": 98
-                  }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 8
-          },
-          "id": 3,
-          "options": {
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showThresholdLabels": false,
-            "showThresholdMarkers": true
-          },
-          "targets": [
-            {
-              "editorMode": "code",
-              "expr": "100 * (((sum(increase(gin_request_total{cluster=~\"$cluster\", pod=~\"($service)-.*\", code=~\"5..\"}[5m])) or vector(0)) <= bool clamp_min(sum(increase(gin_request_total{cluster=~\"$cluster\", pod=~\"($service)-.*\"}[5m])), 1)) * (1 - ((sum(increase(gin_request_total{cluster=~\"$cluster\", pod=~\"($service)-.*\", code=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(increase(gin_request_total{cluster=~\"$cluster\", pod=~\"($service)-.*\"}[5m])), 1))))",
-              "refId": "A"
-            }
-          ],
-          "title": "Success Rate %",
-          "type": "gauge"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "align": "auto",
-                "displayMode": "auto",
-                "inspect": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 8
-          },
-          "id": 4,
-          "options": {
-            "cellHeight": "sm",
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": false
-            },
-            "showHeader": true
-          },
-          "targets": [
-            {
-              "editorMode": "code",
-              "expr": "sum(rate(gin_request_total{cluster=~\"$cluster\", pod=~\"($service)-.*\", code!~\"2..\"}[1m])) by (pod, code)",
-              "format": "table",
-              "instant": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Error RPS By Pod/Code",
-          "transformations": [
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true
-                },
-                "indexByName": {
-                  "Value": 3,
-                  "code": 1,
-                  "pod": 0
-                },
-                "renameByName": {
-                  "Value": "rps_error"
-                }
-              }
-            }
-          ],
-          "type": "table"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
+              "max": 100,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -352,7 +491,7 @@ data:
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 16
+            "y": 12
           },
           "id": 5,
           "options": {
@@ -370,17 +509,17 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "100 * ((sum(increase(gin_request_total{cluster=~\"$cluster\", pod=~\"($service)-.*\", code=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(increase(gin_request_total{cluster=~\"$cluster\", pod=~\"($service)-.*\"}[5m])), 1))",
+              "expr": "100 * ((sum(increase(gin_request_total{cluster=~\"$cluster\", pod=~\"($service)-.*\", code=~\"5..\"}[5m])) or vector(0)) / clamp_min((sum(increase(gin_request_total{cluster=~\"$cluster\", pod=~\"($service)-.*\"}[5m])) or vector(0)), 1))",
               "refId": "A"
             }
           ],
-          "title": "5xx Error %",
+          "title": "5xx error %",
           "type": "gauge"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
@@ -392,9 +531,26 @@ data:
                 "fillOpacity": 70,
                 "lineWidth": 1,
                 "showPoints": "never",
+                "spanNulls": false,
                 "stacking": {
                   "group": "A",
                   "mode": "normal"
+                },
+                "gradientMode": "none",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "lineInterpolation": "linear",
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
                 }
               },
               "mappings": [],
@@ -415,7 +571,7 @@ data:
             "h": 8,
             "w": 16,
             "x": 8,
-            "y": 16
+            "y": 12
           },
           "id": 6,
           "options": {
@@ -439,13 +595,13 @@ data:
               "refId": "A"
             }
           ],
-          "title": "HTTP Volume By Code",
+          "title": "HTTP volume by code",
           "type": "timeseries"
         },
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "Prometheus"
+            "uid": "prometheus"
           },
           "fieldConfig": {
             "defaults": {
@@ -454,7 +610,6 @@ data:
               },
               "custom": {
                 "align": "auto",
-                "displayMode": "auto",
                 "inspect": false
               },
               "mappings": [],
@@ -471,10 +626,86 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 9,
-            "w": 24,
+            "h": 8,
+            "w": 12,
             "x": 0,
-            "y": 24
+            "y": 20
+          },
+          "id": 4,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "targets": [
+            {
+              "editorMode": "code",
+              "expr": "sum(rate(gin_request_total{cluster=~\"$cluster\", pod=~\"($service)-.*\", code!~\"2..\"}[1m])) by (pod, code)",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Error RPS by pod/code",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "indexByName": {
+                  "pod": 0,
+                  "code": 1,
+                  "Value": 2
+                },
+                "renameByName": {
+                  "Value": "rps_error"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "align": "auto",
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 20
           },
           "id": 7,
           "options": {
@@ -498,7 +729,7 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Top Error Routes (5m)",
+          "title": "Top error routes (5m)",
           "transformations": [
             {
               "id": "organize",
@@ -507,10 +738,10 @@ data:
                   "Time": true
                 },
                 "indexByName": {
-                  "Value": 3,
-                  "code": 2,
                   "pod": 0,
-                  "uri": 1
+                  "uri": 1,
+                  "code": 2,
+                  "Value": 3
                 },
                 "renameByName": {
                   "Value": "errors_5m"
@@ -534,17 +765,26 @@ data:
           {
             "current": {
               "selected": true,
-              "text": "dev",
-              "value": "dev"
+              "text": "All",
+              "value": "$__all"
             },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "definition": "label_values(up, cluster)",
             "hide": 0,
+            "includeAll": true,
+            "allValue": ".*",
             "label": "cluster",
+            "multi": true,
             "name": "cluster",
             "options": [],
-            "query": "label_values(gin_request_total, cluster)",
+            "query": "label_values(up, cluster)",
             "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
+            "sort": 1,
             "type": "query"
           },
           {
@@ -559,7 +799,6 @@ data:
             "options": [],
             "query": "product|inventory|order|payment|noti|client",
             "refresh": 0,
-            "regex": "",
             "skipUrlSync": false,
             "type": "textbox"
           }
@@ -570,9 +809,9 @@ data:
         "to": "now"
       },
       "timepicker": {},
-      "timezone": "",
+      "timezone": "browser",
       "title": "Go Micro Overview",
       "uid": "go-micro-overview",
-      "version": 2,
+      "version": 3,
       "weekStart": ""
     }
