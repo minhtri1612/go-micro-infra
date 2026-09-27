@@ -30,6 +30,9 @@ prometheus:
     storageSpec:
       emptyDir:
         medium: ""
+    externalLabels:
+      cluster: management
+      environment: management
     # Nhận remote_write từ Prometheus Agent trên dev/staging/prod (cổng Service NodePort 32090).
     enableRemoteWriteReceiver: true
 
