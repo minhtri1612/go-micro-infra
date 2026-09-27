@@ -31,6 +31,17 @@ cd ~/go-micro-infra
 
 UI Argo (SG `:18080`, IP nhà): `https://<KIND_EIP>:18080` — cert tự ký. Không `kubectl port-forward`. `management-kind-config.yaml` map host `18080` → NodePort `30443`.
 
+Grafana NodePort `32000` / Prometheus NodePort `32090` (management). Cùng CIDR SG với Argo. Cluster **đã create** thì Kind không gắn thêm `extraPortMappings` — không `kind delete`. Trên EC2:
+
+```bash
+sudo install -m 755 ~/go-micro-infra/kind/host-nodeport-proxy.sh /usr/local/bin/host-nodeport-proxy.sh
+sudo cp ~/go-micro-infra/kind/host-nodeport-proxy.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now host-nodeport-proxy
+```
+
+Jenkins apply mở SG `:32000`/`:32090` xong: `http://<KIND_EIP>:32000` (Grafana `admin`/`admin`), `http://<KIND_EIP>:32090` (Prometheus).
+
 ---
 
 ## 1) Recreate 3 clusters

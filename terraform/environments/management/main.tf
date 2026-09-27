@@ -23,7 +23,7 @@ module "kind_host" {
   vpc_id               = module.vpc.vpc_id
   iam_instance_profile = module.ec2_ssm.instance_profile_name
   ingress_cidr         = local.admin_ingress_cidr
-  allowed_tcp_ports    = [18080]
+  allowed_tcp_ports    = [18080, 32000, 32090]
   root_volume_size     = var.kind_root_volume_size
   # Snapshot already has Docker/Kind. Empty user_data so cloud-init does not
   # reinstall Docker on the new instance-id and risk the clusters.
