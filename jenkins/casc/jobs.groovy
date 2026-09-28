@@ -1,6 +1,6 @@
 folder('services') {
   displayName('services')
-  description('Góc nhìn Dev: mỗi repo một job. Push code → job của service đó. Logic CI ở library go-micro-ci (DevOps).')
+  description('Multibranch per service repo. main → image + bump env/dev.yaml. PR/other branches → image only.')
 }
 
 def services = [
@@ -13,28 +13,48 @@ def services = [
 ]
 
 services.each { svc ->
-  pipelineJob("services/${svc.name}") {
-    description("CI ${svc.name}. Dev sở hữu Jenkinsfile trong repo. DevOps sở hữu go-micro-ci.")
-    definition {
-      cpsScm {
-        scm {
-          git {
-            remote {
-              url(svc.repo)
-              credentials('github-go-micro-pat')
-            }
-            branch('*/main')
-          }
-        }
-        scriptPath('Jenkinsfile')
-        lightweight(true)
+  def m = (svc.repo =~ /github\.com[:\/]([^\/]+)\/([^\/.]+)/)
+  if (!m.find()) {
+    throw new IllegalArgumentException("not a GitHub repo url: ${svc.repo}")
+  }
+  def owner = m.group(1)
+  def repoName = m.group(2)
+
+  // Same job name as the old pipelineJob. Delete the old job once if DSL says the name exists as another type.
+  multibranchPipelineJob("services/${svc.name}") {
+    displayName(svc.name)
+    description("Multibranch CI ${svc.name}. Dev: Jenkinsfile. DevOps: go-micro-ci. CD: Argo.")
+    branchSources {
+      github {
+        id("go-micro-${svc.name}")
+        repoOwner(owner)
+        repository(repoName)
+        credentialsId('github-go-micro-pat')
+        repositoryUrl(svc.repo)
+        configuredByUrl(true)
+        buildOriginBranch(true)
+        buildOriginBranchWithPR(false)
+        buildOriginPRHead(true)
+        buildOriginPRMerge(false)
+        buildForkPRHead(false)
+        buildForkPRMerge(false)
       }
     }
-    properties {
-      githubProjectUrl(svc.repo.replace('.git', '/'))
+    factory {
+      workflowBranchProjectFactory {
+        scriptPath('Jenkinsfile')
+      }
+    }
+    orphanedItemStrategy {
+      discardOldItems {
+        daysToKeep(7)
+        numToKeep(20)
+      }
     }
     triggers {
-      githubPush()
+      periodicFolderTrigger {
+        interval('1d')
+      }
     }
   }
 }
