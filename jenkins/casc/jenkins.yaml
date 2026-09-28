@@ -9,8 +9,19 @@ jenkins:
         - id: "${JENKINS_ADMIN_ID}"
           password: "${JENKINS_ADMIN_PASSWORD}"
   authorizationStrategy:
-    loggedInUsersCanDoAnything:
-      allowAnonymousRead: false
+    roleBased:
+      roles:
+        global:
+          - name: "admin"
+            permissions:
+              - "Overall/Administer"
+            entries:
+              - user: "${JENKINS_ADMIN_ID}"
+          - name: "authenticated"
+            permissions:
+              - "Overall/Read"
+            entries:
+              - group: "authenticated"
   globalNodeProperties:
     - envVars:
         env:
