@@ -7,7 +7,7 @@ ARG TF_VERSION=1.16.4
 ARG BUILDX_VERSION=0.23.0
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl ca-certificates git unzip jq \
+  && apt-get install -y --no-install-recommends curl ca-certificates git unzip jq awscli \
   && arch="$(uname -m)" \
   && case "${arch}" in x86_64) dockerarch=x86_64; tfarch=amd64 ;; aarch64) dockerarch=aarch64; tfarch=arm64 ;; *) echo "unsupported arch ${arch}"; exit 1 ;; esac \
   && curl -fsSL "https://download.docker.com/linux/static/stable/${dockerarch}/docker-27.5.1.tgz" -o /tmp/docker.tgz \

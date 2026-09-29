@@ -33,6 +33,10 @@ jenkins:
             value: "${TF_PLAN_WEBHOOK_TOKEN}"
           - key: "TF_APPLY_WEBHOOK_TOKEN"
             value: "${TF_APPLY_WEBHOOK_TOKEN}"
+          - key: "AWS_DEFAULT_REGION"
+            value: "${AWS_DEFAULT_REGION:-ap-southeast-2}"
+          - key: "KIND_INSTANCE_ID"
+            value: "${KIND_INSTANCE_ID}"
 
 credentials:
   system:
