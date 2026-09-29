@@ -13,3 +13,4 @@ workflow-cps
 workflow-scm-step
 generic-webhook-trigger
 role-strategy
+github-branch-source
