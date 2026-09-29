@@ -13,48 +13,29 @@ def services = [
 ]
 
 services.each { svc ->
-  def parts = svc.repo.replaceFirst(/\.git$/, '').tokenize('/')
-  def owner = parts[-2]
-  def repoName = parts[-1]
   def jobName = "services/${svc.name}"
-  try {
-    multibranchPipelineJob(jobName) {
-      displayName(svc.name)
-      description("Multibranch CI ${svc.name}. Dev: Jenkinsfile. DevOps: go-micro-ci. CD: Argo.")
-      branchSources {
-        branchSource {
-          source {
-            github {
-              id("go-micro-${svc.name}")
-              repoOwner(owner)
-              repository(repoName)
-              credentialsId('github-go-micro-pat')
-              traits {
-                gitHubBranchDiscovery {
-                  strategyId(1)
-                }
-                gitHubPullRequestDiscovery {
-                  strategyId(2)
-                }
-              }
-            }
-          }
-        }
-      }
-      factory {
-        workflowBranchProjectFactory {
-          scriptPath('Jenkinsfile')
-        }
-      }
-      orphanedItemStrategy {
-        discardOldItems {
-          daysToKeep(7)
-          numToKeep(20)
-        }
+  multibranchPipelineJob(jobName) {
+    displayName(svc.name)
+    description("Multibranch CI ${svc.name}. Dev: Jenkinsfile. DevOps: go-micro-ci. CD: Argo.")
+    branchSources {
+      git {
+        id("go-micro-${svc.name}")
+        remote(svc.repo)
+        credentialsId('github-go-micro-pat')
+        includes('*')
       }
     }
-  } catch (Exception e) {
-    println "WARN skip ${jobName}: ${e.class.name}: ${e.message}"
+    factory {
+      workflowBranchProjectFactory {
+        scriptPath('Jenkinsfile')
+      }
+    }
+    orphanedItemStrategy {
+      discardOldItems {
+        daysToKeep(7)
+        numToKeep(20)
+      }
+    }
   }
 }
 
