@@ -4,6 +4,7 @@ FROM jenkins/jenkins:lts-jdk17
 USER root
 
 ARG TF_VERSION=1.16.4
+ARG BUILDX_VERSION=0.23.0
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends curl ca-certificates git unzip jq \
@@ -12,6 +13,10 @@ RUN apt-get update \
   && curl -fsSL "https://download.docker.com/linux/static/stable/${dockerarch}/docker-27.5.1.tgz" -o /tmp/docker.tgz \
   && tar -xzf /tmp/docker.tgz -C /tmp && mv /tmp/docker/docker /usr/local/bin/docker \
   && chmod +x /usr/local/bin/docker \
+  && mkdir -p /usr/libexec/docker/cli-plugins \
+  && curl -fsSL "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${tfarch}" \
+       -o /usr/libexec/docker/cli-plugins/docker-buildx \
+  && chmod +x /usr/libexec/docker/cli-plugins/docker-buildx \
   && curl -fsSL "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_${tfarch}.zip" -o /tmp/tf.zip \
   && unzip -o /tmp/tf.zip -d /usr/local/bin \
   && chmod +x /usr/local/bin/terraform \
