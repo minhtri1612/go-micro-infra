@@ -12,20 +12,35 @@ Dev  →  git push service repo
           Argo CD (máy Kind)  →  cluster
 ```
 
-Dev không SSH Jenkins trừ khi xem log job của mình. DevOps giữ `.env`, library, Job DSL.
+Dev không SSH Jenkins trừ khi xem log job của mình. Secret **không** nằm Git, **không** nằm `.env` committed.
 
-## Chạy
+## Secret (production)
 
-Máy này chỉ cần Docker (không cần Kind).
+Nguồn sự thật: **AWS Secrets Manager** `go-micro/jenkins/runtime` (Terraform tạo secret rỗng; JSON seed trên console, không vào tfstate).
+
+Máy Jenkins có IAM role riêng (`go-micro-jenkins-ec2`): đọc **đúng** secret đó + SSM sang Kind. Role Kind (`go-micro-ec2-ssm`) **không** đọc secret Jenkins.
+
+User login: **GitHub OAuth**. Jenkins không lưu password admin/dest. SM chỉ giữ **OAuth App** `GITHUB_OAUTH_CLIENT_ID` / `CLIENT_SECRET` + PAT/Docker/AWS job keys.
+
+GitHub → Settings → Developer settings → OAuth Apps → New:
+
+- Homepage: `http://32.237.61.14:8080/`
+- Authorization callback: `http://32.237.61.14:8080/securityRealm/finishLogin`
+
+`JENKINS_ADMIN_ID` / `JENKINS_DEST_ID` trong secret = **GitHub username** (Role Strategy `entries.user`). Tạo OAuth App + ghi 2 key vào SM **trước** khi `compose up` (sai callback = lockout).
 
 ```bash
-cd jenkins
-cp .env.example .env
-# điền password + Docker Hub token + GitHub PAT (repo + contents:write trên go-micro-gitops)
+cd ~/go-micro-infra/jenkins
+chmod +x scripts/load-runtime-env.sh
+./scripts/load-runtime-env.sh
 docker compose up -d --build
 ```
 
-UI: `http://<ip-máy-jenkins>:8080` (user/pass trong `.env`).
+Shape JSON: `jenkins/secrets.example.json`. File `.env.runtime` sinh ra trên disk (`chmod 600`), gitignore.
+
+## Chạy (cũ, đừng dùng)
+
+`cp .env.example .env` đã bỏ. Đừng commit password.
 
 Webhook GitHub từng service repo:
 
@@ -45,21 +60,14 @@ Không `ciTerraform`. Job DSL folder `platform/`. Jenkinsfile **luôn từ `main
 
 ### Trên EC2 Jenkins
 
-Thêm vào `.env` (xem `.env.example`):
-
-```
-TF_PLAN_WEBHOOK_TOKEN=<openssl rand -hex 24>
-TF_APPLY_WEBHOOK_TOKEN=<openssl rand -hex 24>
-```
-
-`AWS_PLAN_*` / `AWS_APPLY_*` tạm bằng `AWS_*` cho đến khi apply tạo user `go-micro-tf-plan` / `go-micro-tf-apply`.
+Webhook tokens và AWS plan/apply keys nằm trong secret `go-micro/jenkins/runtime`.
 
 ```bash
 cd ~/go-micro-infra && git pull
 cd jenkins
+./scripts/load-runtime-env.sh
 docker compose up -d --build --force-recreate
-# đợi "Jenkins is fully up and running"
-set -a && source .env && set +a
+set -a && source .env.runtime && set +a
 chmod +x github/configure-repo.sh
 ./github/configure-repo.sh
 ```

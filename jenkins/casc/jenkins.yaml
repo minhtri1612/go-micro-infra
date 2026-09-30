@@ -3,13 +3,12 @@ jenkins:
   numExecutors: 2
   mode: NORMAL
   securityRealm:
-    local:
-      allowsSignup: false
-      users:
-        - id: "${JENKINS_ADMIN_ID}"
-          password: "${JENKINS_ADMIN_PASSWORD}"
-        - id: "${JENKINS_DEST_ID}"
-          password: "${JENKINS_DEST_PASSWORD}"
+    github:
+      githubWebUri: "https://github.com"
+      githubApiUri: "https://api.github.com"
+      clientID: "${GITHUB_OAUTH_CLIENT_ID}"
+      clientSecret: "${GITHUB_OAUTH_CLIENT_SECRET}"
+      oauthScopes: "read:org,user:email"
   authorizationStrategy:
     roleBased:
       roles:

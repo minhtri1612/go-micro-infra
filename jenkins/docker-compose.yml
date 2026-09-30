@@ -1,5 +1,6 @@
 # Jenkins CI server. Chạy trên EC2/VPS riêng — không phải Kind.
 # user root: docker.sock trên host (lab). Không phải mô hình Kubernetes agent.
+# Secrets: AWS Secrets Manager go-micro/jenkins/runtime → ./scripts/load-runtime-env.sh → .env.runtime
 services:
   jenkins:
     build: .
@@ -8,32 +9,11 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    env_file:
+      - .env.runtime
     environment:
       CASC_JENKINS_CONFIG: /var/jenkins_home/casc_configs
       JAVA_OPTS: "-Djenkins.install.runSetupWizard=false -Xms128m -Xmx512m -XX:MaxMetaspaceSize=160m -XX:+UseSerialGC"
-      JENKINS_ADMIN_ID: ${JENKINS_ADMIN_ID:-admin}
-      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?set in .env}
-      JENKINS_DEST_ID: ${JENKINS_DEST_ID:-dest}
-      JENKINS_DEST_PASSWORD: ${JENKINS_DEST_PASSWORD:-dest-change-me}
-      JENKINS_URL: ${JENKINS_URL:-http://localhost:8080/}
-      DOCKERHUB_USER: ${DOCKERHUB_USER:?set in .env}
-      DOCKERHUB_TOKEN: ${DOCKERHUB_TOKEN:?set in .env}
-      GITHUB_USER: ${GITHUB_USER:?set in .env}
-      GITHUB_PAT: ${GITHUB_PAT:?set in .env}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set in .env}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set in .env}
-      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-ap-southeast-2}
-      KIND_INSTANCE_ID: ${KIND_INSTANCE_ID:-}
-      AWS_PLAN_ACCESS_KEY_ID: ${AWS_PLAN_ACCESS_KEY_ID:-${AWS_ACCESS_KEY_ID}}
-      AWS_PLAN_SECRET_ACCESS_KEY: ${AWS_PLAN_SECRET_ACCESS_KEY:-${AWS_SECRET_ACCESS_KEY}}
-      AWS_APPLY_ACCESS_KEY_ID: ${AWS_APPLY_ACCESS_KEY_ID:-${AWS_ACCESS_KEY_ID}}
-      AWS_APPLY_SECRET_ACCESS_KEY: ${AWS_APPLY_SECRET_ACCESS_KEY:-${AWS_SECRET_ACCESS_KEY}}
-      TF_STATE_BUCKET: ${TF_STATE_BUCKET:?set in .env}
-      TF_ADMIN_INGRESS_CIDR: ${TF_ADMIN_INGRESS_CIDR:?set in .env}
-      TF_DB_PASSWORD: ${TF_DB_PASSWORD:?set in .env}
-      TF_STRIPE_SECRET_KEY: ${TF_STRIPE_SECRET_KEY:?set in .env}
-      TF_PLAN_WEBHOOK_TOKEN: ${TF_PLAN_WEBHOOK_TOKEN:?set in .env}
-      TF_APPLY_WEBHOOK_TOKEN: ${TF_APPLY_WEBHOOK_TOKEN:?set in .env}
     volumes:
       - jenkins_home:/var/jenkins_home
       - ./casc:/var/jenkins_home/casc_configs:ro
