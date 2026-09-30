@@ -13,8 +13,10 @@ import json, os, subprocess, sys
 secret_id, out, region = sys.argv[1], sys.argv[2], sys.argv[3]
 required = [
     "JENKINS_ADMIN_ID",
-    "JENKINS_ADMIN_PASSWORD",
+    "JENKINS_DEST_ID",
     "JENKINS_URL",
+    "GITHUB_OAUTH_CLIENT_ID",
+    "GITHUB_OAUTH_CLIENT_SECRET",
     "DOCKERHUB_USER",
     "DOCKERHUB_TOKEN",
     "GITHUB_USER",
