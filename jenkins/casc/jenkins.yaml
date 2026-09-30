@@ -8,6 +8,8 @@ jenkins:
       users:
         - id: "${JENKINS_ADMIN_ID}"
           password: "${JENKINS_ADMIN_PASSWORD}"
+        - id: "${JENKINS_DEST_ID}"
+          password: "${JENKINS_DEST_PASSWORD}"
   authorizationStrategy:
     roleBased:
       roles:
@@ -22,6 +24,22 @@ jenkins:
               - "Overall/Read"
             entries:
               - group: "authenticated"
+          - name: "dest"
+            permissions:
+              - "Overall/Read"
+            entries:
+              - user: "${JENKINS_DEST_ID}"
+        items:
+          - name: "dest-order"
+            pattern: "^services/order(/.*)?$"
+            permissions:
+              - "Job/Read"
+              - "Job/Discover"
+              - "Job/Build"
+              - "Job/Cancel"
+              - "Job/Workspace"
+            entries:
+              - user: "${JENKINS_DEST_ID}"
   globalNodeProperties:
     - envVars:
         env:
