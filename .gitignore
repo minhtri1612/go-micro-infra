@@ -22,5 +22,7 @@ ansible/inventory_openvpn.yml
 ansible/group_vars/users.yml
 ansible/out/
 *.ovpn
-kube_config_rke2_*.yamlansible/inventory_rke2-*.yml
+kube_config_rke2_*.yaml
+__pycache__/
+*.pycansible/inventory_rke2-*.yml
 ansible/group_vars/vpn_server.yml
