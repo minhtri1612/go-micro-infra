@@ -1,0 +1,4 @@
+aws_region = "ap-southeast-2"
+# Management runs Argo CD + monitoring only, so one worker is enough.
+worker_count = 1
+use_spot     = false

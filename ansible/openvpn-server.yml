@@ -1,0 +1,261 @@
+---
+# OpenVPN gateway for the three RKE2 VPCs. Runs over SSM (see inventory example),
+# so this host never opens port 22.
+#
+#   ansible-playbook -e openvpn_public_ip=<EIP> openvpn-server.yml
+- name: Configure OpenVPN gateway on the management VPC
+  hosts: vpn_server
+  become: true
+  vars_files:
+    - group_vars/users.yml
+  vars:
+    vpn_network: "10.8.0.0"
+    vpn_mask: "255.255.255.0"
+    easyrsa_bin: "/usr/share/easy-rsa/easyrsa"
+
+  tasks:
+    - name: Install OpenVPN and Easy-RSA
+      ansible.builtin.apt:
+        name: [openvpn, easy-rsa, iptables-persistent]
+        state: present
+        update_cache: true
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: Create server directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /etc/openvpn/server
+        - /etc/openvpn/server/ccd
+
+    - name: Init PKI and CA
+      ansible.builtin.shell: |
+        make-cadir /etc/openvpn/easy-rsa
+        cd /etc/openvpn/easy-rsa
+        {{ easyrsa_bin }} init-pki
+        echo "{{ project_name | default('go-micro') }}-vpn-ca" | {{ easyrsa_bin }} build-ca nopass
+        {{ easyrsa_bin }} gen-dh
+        openvpn --genkey secret /etc/openvpn/server/ta.key
+      args:
+        creates: /etc/openvpn/easy-rsa/pki/ca.crt
+
+    - name: Generate server certificate
+      ansible.builtin.shell: |
+        {{ easyrsa_bin }} --batch --pki-dir=/etc/openvpn/easy-rsa/pki gen-req server nopass
+        {{ easyrsa_bin }} --batch --pki-dir=/etc/openvpn/easy-rsa/pki sign-req server server
+      args:
+        creates: /etc/openvpn/easy-rsa/pki/issued/server.crt
+
+    - name: Copy CA and server material into place
+      ansible.builtin.copy:
+        src: "/etc/openvpn/easy-rsa/pki/{{ item.src }}"
+        dest: "/etc/openvpn/server/{{ item.dest }}"
+        remote_src: true
+        mode: "0600"
+      loop:
+        - { src: "ca.crt", dest: "ca.crt" }
+        - { src: "issued/server.crt", dest: "server.crt" }
+        - { src: "private/server.key", dest: "server.key" }
+        - { src: "dh.pem", dest: "dh.pem" }
+
+    - name: Generate server.conf (UDP 1194)
+      ansible.builtin.copy:
+        dest: /etc/openvpn/server/server.conf
+        mode: "0644"
+        content: |
+          port 1194
+          proto udp
+          dev tun
+          topology subnet
+          ca ca.crt
+          cert server.crt
+          key server.key
+          dh dh.pem
+          tls-auth ta.key 0
+          server {{ vpn_network }} {{ vpn_mask }}
+          client-config-dir ccd
+          push "route-gateway 10.8.0.1"
+          {% for r in vpn_target %}
+          push "route {{ r.cidr }} {{ r.mask }}"
+          {% endfor %}
+          {% if vpn_policy.redirect_gateway | default(false) %}
+          push "redirect-gateway def1"
+          {% endif %}
+          cipher {{ vpn_policy.cipher }}
+          auth {{ vpn_policy.auth }}
+          keepalive {{ vpn_policy.keepalive }}
+          persist-key
+          persist-tun
+          verb {{ vpn_policy.verb | default('3') }}
+
+    - name: TCP client-connect hook (pin the client /32 to tun1)
+      ansible.builtin.copy:
+        dest: /etc/openvpn/server/tcp-client-connect.sh
+        mode: "0755"
+        content: |
+          #!/bin/bash
+          # Both instances serve 10.8.0.0/24, so the kernel would send replies for a
+          # TCP client out of tun0. Pin a host route to tun1 while it is connected.
+          [ -n "$ifconfig_pool_remote_ip" ] && ip route replace "${ifconfig_pool_remote_ip}/32" dev tun1
+          exit 0
+
+    - name: TCP client-disconnect hook
+      ansible.builtin.copy:
+        dest: /etc/openvpn/server/tcp-client-disconnect.sh
+        mode: "0755"
+        content: |
+          #!/bin/bash
+          [ -n "$ifconfig_pool_remote_ip" ] && ip route del "${ifconfig_pool_remote_ip}/32" dev tun1 2>/dev/null || true
+          exit 0
+
+    - name: Generate server-tcp.conf (TCP 443 fallback on tun1)
+      ansible.builtin.copy:
+        dest: /etc/openvpn/server/server-tcp.conf
+        mode: "0644"
+        content: |
+          port 443
+          proto tcp-server
+          dev tun1
+          topology subnet
+          ca ca.crt
+          cert server.crt
+          key server.key
+          dh dh.pem
+          tls-auth ta.key 0
+          server {{ vpn_network }} {{ vpn_mask }}
+          client-config-dir ccd
+          push "route-gateway 10.8.0.1"
+          {% for r in vpn_target %}
+          push "route {{ r.cidr }} {{ r.mask }}"
+          {% endfor %}
+          cipher {{ vpn_policy.cipher }}
+          auth {{ vpn_policy.auth }}
+          keepalive {{ vpn_policy.keepalive }}
+          persist-key
+          persist-tun
+          verb {{ vpn_policy.verb | default('3') }}
+          script-security 2
+          client-connect /etc/openvpn/server/tcp-client-connect.sh
+          client-disconnect /etc/openvpn/server/tcp-client-disconnect.sh
+
+    - name: Enable IPv4 forwarding
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: "1"
+        state: present
+
+    # Strict reverse-path filtering drops the VPN reply path on a router host.
+    - name: Loosen reverse path filter
+      ansible.posix.sysctl:
+        name: "{{ item }}"
+        value: "2"
+        state: present
+        sysctl_set: true
+      loop:
+        - net.ipv4.conf.all.rp_filter
+        - net.ipv4.conf.default.rp_filter
+
+    - name: Pin static VPN IPs per user
+      ansible.builtin.copy:
+        dest: "/etc/openvpn/server/ccd/{{ item.name }}"
+        mode: "0644"
+        content: "ifconfig-push {{ item.ip }} {{ vpn_mask }}"
+      loop: "{{ vpn_users }}"
+
+    - name: Generate client certificates
+      ansible.builtin.shell: |
+        export EASYRSA_REQ_CN="{{ item.name }}"
+        {{ easyrsa_bin }} --batch --pki-dir=/etc/openvpn/easy-rsa/pki gen-req {{ item.name }} nopass
+        {{ easyrsa_bin }} --batch --pki-dir=/etc/openvpn/easy-rsa/pki sign-req client {{ item.name }}
+      args:
+        creates: "/etc/openvpn/easy-rsa/pki/issued/{{ item.name }}.crt"
+      loop: "{{ vpn_users }}"
+
+    - name: Build .ovpn profiles (UDP and TCP fallback)
+      ansible.builtin.shell: |
+        set -e
+        build() {
+          proto="$1"; port="$2"; out="$3"
+          {
+            echo "client"
+            echo "dev tun"
+            echo "proto $proto"
+            echo "remote {{ openvpn_public_ip }} $port"
+            echo "resolv-retry infinite"
+            echo "nobind"
+            echo "persist-key"
+            echo "persist-tun"
+            echo "remote-cert-tls server"
+            echo "cipher {{ vpn_policy.cipher }}"
+            echo "auth {{ vpn_policy.auth }}"
+            echo "key-direction 1"
+            echo "verb {{ vpn_policy.verb | default('3') }}"
+            echo "<ca>"; cat /etc/openvpn/server/ca.crt; echo "</ca>"
+            echo "<cert>"; cat /etc/openvpn/easy-rsa/pki/issued/{{ item.name }}.crt; echo "</cert>"
+            echo "<key>"; cat /etc/openvpn/easy-rsa/pki/private/{{ item.name }}.key; echo "</key>"
+            echo "<tls-auth>"; cat /etc/openvpn/server/ta.key; echo "</tls-auth>"
+          } > "$out"
+          chmod 600 "$out"
+        }
+        build udp 1194 /root/{{ item.name }}.ovpn
+        build tcp-client 443 /root/{{ item.name }}-tcp.ovpn
+      args:
+        creates: "/root/{{ item.name }}.ovpn"
+      loop: "{{ vpn_users }}"
+
+    - name: Allow forwarding to and from the VPN pool
+      ansible.builtin.shell: |
+        iptables -C FORWARD -s {{ vpn_network }}/24 -j ACCEPT 2>/dev/null || iptables -A FORWARD -s {{ vpn_network }}/24 -j ACCEPT
+        iptables -C FORWARD -d {{ vpn_network }}/24 -j ACCEPT 2>/dev/null || iptables -A FORWARD -d {{ vpn_network }}/24 -j ACCEPT
+      changed_when: false
+
+    - name: Clamp MSS on forwarded VPN traffic
+      ansible.builtin.shell: |
+        iptables -t mangle -C FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || \
+        iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+      changed_when: false
+
+    # No -o interface: the AWS NIC name varies (ens5/eth0) and a wrong -o silently
+    # skips the SNAT, which breaks the reply path across the peering.
+    - name: MASQUERADE VPN clients towards the VPCs
+      ansible.builtin.shell: |
+        iptables -t nat -C POSTROUTING -s {{ vpn_network }}/24 ! -d {{ vpn_network }}/24 -j MASQUERADE 2>/dev/null || \
+        iptables -t nat -A POSTROUTING -s {{ vpn_network }}/24 ! -d {{ vpn_network }}/24 -j MASQUERADE
+      when: vpn_nat | default(false) | bool
+      changed_when: false
+
+    # Network-level dest/prod isolation, matching the Jenkins and Argo CD split:
+    # the developer profile can reach dev but is dropped towards prod.
+    - name: Per-user firewall (admin full, developer dev-only)
+      ansible.builtin.shell: |
+        iptables -C FORWARD -s {{ vpn_admin_ip }} -j ACCEPT 2>/dev/null || \
+          iptables -I FORWARD 1 -s {{ vpn_admin_ip }} -j ACCEPT
+        iptables -C FORWARD -s {{ vpn_developer_ip }} -d {{ network_ranges.prod }} -j DROP 2>/dev/null || \
+          iptables -I FORWARD 2 -s {{ vpn_developer_ip }} -d {{ network_ranges.prod }} -j DROP
+        iptables -C FORWARD -s {{ vpn_developer_ip }} -d {{ network_ranges.dev }} -j ACCEPT 2>/dev/null || \
+          iptables -I FORWARD 3 -s {{ vpn_developer_ip }} -d {{ network_ranges.dev }} -j ACCEPT
+      changed_when: false
+
+    - name: Persist iptables
+      ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
+      changed_when: false
+
+    - name: Start OpenVPN (UDP + TCP)
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: restarted
+        enabled: true
+        daemon_reload: true
+      loop:
+        - openvpn-server@server
+        - openvpn-server@server-tcp
+
+    - name: Fetch .ovpn profiles to the control node
+      ansible.builtin.fetch:
+        src: "/root/{{ item }}"
+        dest: "{{ playbook_dir }}/out/"
+        flat: true
+      loop: "{{ vpn_users | map(attribute='name') | map('regex_replace', '$', '.ovpn') | list }}"

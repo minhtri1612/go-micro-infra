@@ -18,3 +18,7 @@ jenkins/.env.runtime
 !*.tfvars.example
 **/backend.hcl
 terraform/environments/management/lambda/*.zip
+ansible/inventory_openvpn.yml
+ansible/group_vars/users.yml
+ansible/out/
+*.ovpn

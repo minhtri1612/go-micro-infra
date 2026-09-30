@@ -160,3 +160,55 @@ Bootstrap không đi qua Jenkins:
 ```bash
 terraform -chdir=terraform/bootstrap ...
 ```
+
+## RKE2 — 3 VPC peering (management / dev / prod)
+
+Stack mới, **không** thay `management/` (Kind host + Jenkins vẫn chạy nguyên trong VPC `10.50.0.0/16`).
+
+```
+environments/rke2-management/   10.0.0.0/16   RKE2 + Argo CD + OpenVPN
+environments/rke2-dev/          10.1.0.0/16   RKE2 (private only)
+environments/rke2-prod/         10.2.0.0/16   RKE2 (private only)
+environments/networking/        peering: mgmt↔dev, mgmt↔prod, jenkins↔dev, jenkins↔prod
+```
+
+`modules/`: `rke2-network`, `rke2-iam`, `rke2-token`, `rke2-lb`, `rke2-nodes`, `openvpn`.
+
+Node nằm **private subnet, không public IP, không port 22**: shell bằng SSM, người vào mạng bằng OpenVPN. NAT gateway mỗi VPC cho SSM / registry / `get.rke2.io`.
+
+CNI là **Canal** (default RKE2). `rke2-ingress-nginx` bị `disable` vì Traefik do Argo CD quản lý và dùng NodePort **32080/32443** — public NLB trỏ vào 2 port đó (thay `host-nodeport-proxy` của Kind).
+
+Token cluster do Terraform sinh và lưu Secrets Manager `go-micro/{env}/rke2-token`, không qua tfvars.
+
+### Thứ tự apply
+
+`networking/` đọc VPC theo tag nên dev/prod là optional — apply được ngay sau management.
+
+```bash
+export TF_STACK=rke2-management   # rồi rke2-dev, rke2-prod, networking
+terraform -chdir=terraform/environments/$TF_STACK init -backend-config=backend.hcl
+terraform -chdir=terraform/environments/$TF_STACK apply
+```
+
+State key theo stack: `{stack}/terraform.tfstate`. Job Jenkins dùng `TF_STACK` (allowlist trong `jenkins/terraform/run.sh`).
+
+### OpenVPN (Ansible qua SSM)
+
+Playbook ở `ansible/openvpn-server.yml`, **không** SSH: `ansible_connection: community.aws.aws_ssm`.
+
+```bash
+cd ansible
+cp inventory_openvpn.example.yml inventory_openvpn.yml   # điền openvpn_instance_id + bucket
+cp group_vars/users.yml.example group_vars/users.yml
+ansible-playbook -e openvpn_public_ip="$(terraform -chdir=../terraform/environments/rke2-management output -raw openvpn_public_ip)" openvpn-server.yml
+```
+
+`.ovpn` về `ansible/out/` (gitignored). Firewall theo user: `10.8.0.51` (devops) đi hết, `10.8.0.50` (developer) vào được dev nhưng **DROP** sang prod.
+
+### kubeconfig cho Jenkins / Argo CD
+
+```bash
+scripts/rke2/export-kubeconfig.sh rke2-dev
+```
+
+Đọc `/etc/rancher/rke2/rke2.yaml` qua SSM, đổi server thành internal NLB (đã có trong `tls-san`), lưu `go-micro/{env}/kubeconfig`. Jenkins ở `10.50.0.0/16` gọi apiserver qua peering — SG master đã mở 6443 cho `10.0.0.0/16` + `10.50.0.0/16`.

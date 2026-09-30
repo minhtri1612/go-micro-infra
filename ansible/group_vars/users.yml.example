@@ -1,0 +1,30 @@
+# Copy to users.yml (gitignored). Static VPN IPs drive the per-user firewall below.
+vpn_users:
+  - { name: "devops", ip: "10.8.0.51" }
+  - { name: "developer", ip: "10.8.0.50" }
+
+vpn_policy:
+  cipher: "AES-256-GCM"
+  auth: "SHA256"
+  keepalive: "10 120"
+  redirect_gateway: false
+  verb: "3"
+
+# SNAT at the VPN host so replies from dev/prod return through the peering
+# instead of needing a 10.8.0.0/24 route in every VPC.
+vpn_nat: true
+
+# Routes pushed to clients: management, dev, prod.
+vpn_target:
+  - { cidr: "10.0.0.0", mask: "255.255.0.0" }
+  - { cidr: "10.1.0.0", mask: "255.255.0.0" }
+  - { cidr: "10.2.0.0", mask: "255.255.0.0" }
+
+# Network-level dest/prod split: the developer IP is dropped towards prod.
+network_ranges:
+  management: "10.0.0.0/16"
+  dev: "10.1.0.0/16"
+  prod: "10.2.0.0/16"
+
+vpn_admin_ip: "10.8.0.51"
+vpn_developer_ip: "10.8.0.50"

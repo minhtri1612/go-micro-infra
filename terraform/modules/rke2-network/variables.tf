@@ -1,0 +1,42 @@
+variable "project_name" {
+  type = string
+}
+
+variable "environment" {
+  description = "management | dev | prod"
+  type        = string
+}
+
+variable "vpc_cidr" {
+  type = string
+}
+
+variable "public_subnet_cidrs" {
+  type = list(string)
+}
+
+variable "private_subnet_cidrs" {
+  type = list(string)
+}
+
+variable "api_peer_cidrs" {
+  description = "Peered VPC CIDRs allowed to reach apiserver :6443 (Argo CD, Jenkins)"
+  type        = list(string)
+  default     = []
+}
+
+variable "vpn_client_cidr" {
+  description = "OpenVPN client pool"
+  type        = string
+  default     = "10.8.0.0/24"
+}
+
+variable "http_node_port" {
+  type    = number
+  default = 32080
+}
+
+variable "https_node_port" {
+  type    = number
+  default = 32443
+}
