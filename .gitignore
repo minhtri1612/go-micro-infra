@@ -12,6 +12,7 @@ override.tf.json
 terraform.rc
 *.pem
 jenkins/.env
+jenkins/.env.runtime
 **/.terraform/**
 *.tfvars
 !*.tfvars.example
