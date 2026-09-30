@@ -8,7 +8,8 @@ project_name = "go-micro"
 kind_instance_type    = "t3.xlarge"
 kind_ami_id           = "ami-0431580b981f6110a"
 jenkins_instance_type = "t4g.small"
-jenkins_ami_id        = "ami-0da8007d942cd1875"
+jenkins_use_spot      = false
+jenkins_ami_id        = "ami-0004fb89ca77c5bfb"
 
 environments = ["dev", "prod"]
 db_user      = "postgres"

@@ -81,6 +81,9 @@ resource "aws_instance" "this" {
 
   lifecycle {
     create_before_destroy = true
+    # Rescue/import: instance user_data/metadata often empty vs this module.
+    # Changing them in-place is a reboot; ignore so apply does not replace the host.
+    ignore_changes = [user_data, user_data_base64, metadata_options]
   }
 }
 

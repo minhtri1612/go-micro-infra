@@ -42,8 +42,14 @@ variable "kind_ami_id" {
 
 variable "jenkins_ami_id" {
   type        = string
-  default     = "ami-0da8007d942cd1875"
-  description = "Pin the running Jenkins AMI so dropping ignore_changes[ami] does not replace Jenkins."
+  default     = "ami-0004fb89ca77c5bfb"
+  description = "Pin the running Jenkins AMI (rescue image of the host after Spot interruption). Wrong AMI = replace = wipe Jenkins disk."
+}
+
+variable "jenkins_use_spot" {
+  type        = bool
+  default     = false
+  description = "false = On-Demand. t4g.small Spot in ap-southeast-2a was stopped by AWS when capacity disappeared."
 }
 
 variable "kind_root_volume_size" {

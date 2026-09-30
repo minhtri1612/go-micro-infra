@@ -35,6 +35,7 @@ module "kind_host" {
 # or close SG :8080 without a local-apply fallback (see terraform/README.md).
 # :8080 must be world-open so GitHub Cloud webhooks can hit generic-webhook-trigger
 # (admin_ingress_cidr is only the laptop; GitHub IPs are not that /32).
+# On-demand: t4g.small Spot in ap-southeast-2a was reclaimed (stop) repeatedly.
 module "jenkins_host" {
   source = "../../modules/ubuntu-host"
 
@@ -43,7 +44,7 @@ module "jenkins_host" {
   instance_type        = var.jenkins_instance_type
   ami_id               = var.jenkins_ami_id
   ami_arch             = "arm64"
-  use_spot             = true
+  use_spot             = var.jenkins_use_spot
   subnet_id            = module.vpc.public_subnet_id
   vpc_id               = module.vpc.vpc_id
   iam_instance_profile = module.ec2_ssm.instance_profile_name
