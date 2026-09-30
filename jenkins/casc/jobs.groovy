@@ -16,7 +16,7 @@ services.each { svc ->
   def jobName = "services/${svc.name}"
   multibranchPipelineJob(jobName) {
     displayName(svc.name)
-    description("Multibranch CI ${svc.name}. Dev: Jenkinsfile. DevOps: go-micro-ci. CD: Argo.")
+    description("CI ${svc.name}. Push main → image + bump env/dev.yaml. PR/other branches → image only.")
     branchSources {
       git {
         id("go-micro-${svc.name}")
@@ -41,7 +41,7 @@ services.each { svc ->
 
 folder('platform') {
   displayName('platform')
-  description('DevOps only. Terraform plan/apply/destroy-target. Dev không chạy folder này.')
+  description('Admin only. Developers have no Discover/Read on this folder.')
 }
 
 pipelineJob('platform/terraform-management-plan') {

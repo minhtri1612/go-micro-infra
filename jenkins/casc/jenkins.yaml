@@ -1,5 +1,5 @@
 jenkins:
-  systemMessage: "go-micro CI — Jenkins ngoài cluster. 1 job / service. CD = Argo CD."
+  systemMessage: "go-micro CI. Developer: folder services only. Push main → image + env/dev.yaml."
   numExecutors: 2
   mode: NORMAL
   securityRealm:
