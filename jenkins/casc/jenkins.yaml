@@ -30,8 +30,8 @@ jenkins:
             entries:
               - user: "${JENKINS_DEST_ID}"
         items:
-          - name: "dest-order"
-            pattern: "^services/order(/.*)?$"
+          - name: "developer"
+            pattern: "^services/.*"
             permissions:
               - "Job/Read"
               - "Job/Discover"
@@ -40,6 +40,17 @@ jenkins:
               - "Job/Workspace"
             entries:
               - user: "${JENKINS_DEST_ID}"
+          - name: "devops-platform"
+            pattern: "^platform/.*"
+            permissions:
+              - "Job/Read"
+              - "Job/Discover"
+              - "Job/Build"
+              - "Job/Cancel"
+              - "Job/Workspace"
+              - "Job/Configure"
+            entries:
+              - user: "${JENKINS_ADMIN_ID}"
   globalNodeProperties:
     - envVars:
         env:
