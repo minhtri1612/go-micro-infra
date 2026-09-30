@@ -13,7 +13,7 @@ import json, os, subprocess, sys
 secret_id, out, region = sys.argv[1], sys.argv[2], sys.argv[3]
 required = [
     "JENKINS_ADMIN_ID",
-    "JENKINS_DEST_ID",
+    "JENKINS_DEVELOPER_ID",
     "JENKINS_URL",
     "GITHUB_OAUTH_CLIENT_ID",
     "GITHUB_OAUTH_CLIENT_SECRET",
@@ -44,11 +44,13 @@ raw = subprocess.check_output(
     text=True,
 )
 data = json.loads(raw)
+if not str(data.get("JENKINS_DEVELOPER_ID", "")).strip():
+    data["JENKINS_DEVELOPER_ID"] = str(data.get("JENKINS_DEST_ID", "")).strip()
 missing = [k for k in required if not str(data.get(k, "")).strip()]
 if missing:
     sys.exit("secret %s missing keys: %s" % (secret_id, ", ".join(missing)))
 data.setdefault("AWS_DEFAULT_REGION", region)
-data.setdefault("JENKINS_DEST_ID", "dest")
+data.setdefault("JENKINS_DEST_ID", data.get("JENKINS_DEVELOPER_ID", ""))
 with open(out, "w", encoding="utf-8") as fh:
     for key, val in data.items():
         if val is None:

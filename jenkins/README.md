@@ -20,14 +20,14 @@ Nguồn sự thật: **AWS Secrets Manager** `go-micro/jenkins/runtime` (Terrafo
 
 Máy Jenkins có IAM role riêng (`go-micro-jenkins-ec2`): đọc **đúng** secret đó + SSM sang Kind. Role Kind (`go-micro-ec2-ssm`) **không** đọc secret Jenkins.
 
-User login: **GitHub OAuth**. Jenkins không lưu password admin/dest. SM chỉ giữ **OAuth App** `GITHUB_OAUTH_CLIENT_ID` / `CLIENT_SECRET` + PAT/Docker/AWS job keys.
+User login: **GitHub OAuth**. Jenkins không lưu password. SM chỉ giữ **OAuth App** `GITHUB_OAUTH_CLIENT_ID` / `CLIENT_SECRET` + PAT/Docker/AWS job keys.
 
 GitHub → Settings → Developer settings → OAuth Apps → New:
 
 - Homepage: `http://32.237.61.14:8080/`
 - Authorization callback: `http://32.237.61.14:8080/securityRealm/finishLogin`
 
-`JENKINS_ADMIN_ID` / `JENKINS_DEST_ID` trong secret = **GitHub username** (Role Strategy `entries.user`). Tạo OAuth App + ghi 2 key vào SM **trước** khi `compose up` (sai callback = lockout).
+`JENKINS_ADMIN_ID` / `JENKINS_DEVELOPER_ID` trong secret = **hai GitHub username khác nhau** (Role Strategy `entries.user`). `dest` là tên môi trường Kind (dev yaml), không phải role Jenkins. Tạo OAuth App + ghi 2 key vào SM **trước** khi `compose up` (sai callback = lockout).
 
 ```bash
 cd ~/go-micro-infra/jenkins

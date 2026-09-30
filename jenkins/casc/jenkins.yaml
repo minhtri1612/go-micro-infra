@@ -23,14 +23,14 @@ jenkins:
               - "Overall/Read"
             entries:
               - group: "authenticated"
-          - name: "dest"
+          - name: "developer"
             permissions:
               - "Overall/Read"
             entries:
-              - user: "${JENKINS_DEST_ID}"
+              - user: "${JENKINS_DEVELOPER_ID}"
         items:
-          - name: "dest-order"
-            pattern: "^services/order(/.*)?$"
+          - name: "developer-services"
+            pattern: "^services/.*"
             permissions:
               - "Job/Read"
               - "Job/Discover"
@@ -38,7 +38,18 @@ jenkins:
               - "Job/Cancel"
               - "Job/Workspace"
             entries:
-              - user: "${JENKINS_DEST_ID}"
+              - user: "${JENKINS_DEVELOPER_ID}"
+          - name: "devops-platform"
+            pattern: "^platform/.*"
+            permissions:
+              - "Job/Read"
+              - "Job/Discover"
+              - "Job/Build"
+              - "Job/Cancel"
+              - "Job/Workspace"
+              - "Job/Configure"
+            entries:
+              - user: "${JENKINS_ADMIN_ID}"
   globalNodeProperties:
     - envVars:
         env:
