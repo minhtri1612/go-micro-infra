@@ -12,7 +12,7 @@ terraform/
 
 Mỗi root có `provider.tf` thật (không symlink) để Jenkins `terraform -chdir=...` chạy được.
 
-Jenkins **không** nằm trên Kind. Hai EC2, một VPC. Cả hai Spot. **Không** tách `jenkins-host/` thành stack riêng: VPC + Kind + Jenkins + secrets cùng `management/`.
+Jenkins **không** nằm trên Kind. Hai EC2, một VPC. Kind = Spot; Jenkins = On-Demand (`jenkins_use_spot = false`) vì Spot `t4g.small` bị AWS stop khi hết capacity. **Không** tách `jenkins-host/` thành stack riêng: VPC + Kind + Jenkins + secrets cùng `management/`.
 
 ## Con gà–quả trứng (ai apply lúc nào)
 
