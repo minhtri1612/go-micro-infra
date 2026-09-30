@@ -2,13 +2,6 @@
 # RKE2: the cluster runs containerd, and the existing pipeline does `docker build`.
 # IAM name is prefixed rke2- so it does not clash with the Kind-era jenkins-ec2 role.
 
-data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
-
-data "aws_secretsmanager_secret" "jenkins_runtime" {
-  name = var.jenkins_runtime_secret_name
-}
-
 data "aws_iam_policy_document" "jenkins_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -17,6 +10,13 @@ data "aws_iam_policy_document" "jenkins_assume" {
       identifiers = ["ec2.amazonaws.com"]
     }
   }
+}
+
+# Old Kind stack owned this secret; it was destroyed with environments/management.
+resource "aws_secretsmanager_secret" "jenkins_runtime" {
+  name                    = var.jenkins_runtime_secret_name
+  description             = "Jenkins compose/CasC runtime. Seed JSON in the AWS console."
+  recovery_window_in_days = 0
 }
 
 resource "aws_iam_role" "jenkins" {
@@ -39,7 +39,7 @@ resource "aws_iam_role_policy" "jenkins_runtime" {
         Sid      = "ReadJenkinsRuntimeSecret"
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
-        Resource = [data.aws_secretsmanager_secret.jenkins_runtime.arn]
+        Resource = [aws_secretsmanager_secret.jenkins_runtime.arn]
       }
     ]
   })

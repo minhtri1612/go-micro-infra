@@ -34,9 +34,9 @@ variable "private_subnet_cidrs" {
 }
 
 variable "api_peer_cidrs" {
-  description = "10.0.0.0/16 = Argo CD in the management VPC, 10.50.0.0/16 = Jenkins VPC"
+  description = "10.0.0.0/16 = Argo CD and Jenkins in the management VPC"
   type        = list(string)
-  default     = ["10.0.0.0/16", "10.50.0.0/16"]
+  default     = ["10.0.0.0/16"]
 }
 
 variable "master_instance_type" {
