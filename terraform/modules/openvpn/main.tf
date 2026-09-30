@@ -25,6 +25,7 @@ resource "aws_instance" "this" {
   subnet_id                   = var.subnet_id
   vpc_security_group_ids      = [var.security_group_id]
   iam_instance_profile        = var.iam_instance_profile
+  key_name                    = var.key_name
   associate_public_ip_address = true
 
   # This host routes VPN client traffic into the VPCs, so it must be allowed to
@@ -36,6 +37,7 @@ resource "aws_instance" "this" {
     set -eux
     apt-get update
     apt-get install -y openvpn easy-rsa iptables-persistent
+    # SSM agent stays installed as break-glass for when the VPN itself is down.
     snap list amazon-ssm-agent >/dev/null 2>&1 || snap install amazon-ssm-agent --classic
     snap start amazon-ssm-agent || true
   EOF

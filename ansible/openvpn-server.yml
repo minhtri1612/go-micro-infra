@@ -1,8 +1,8 @@
 ---
-# OpenVPN gateway for the three RKE2 VPCs. Runs over SSM (see inventory example),
-# so this host never opens port 22.
+# OpenVPN gateway for the three RKE2 VPCs. This is the one host reachable from
+# the internet; it is also the SSH jump host for every private node.
 #
-#   ansible-playbook -e openvpn_public_ip=<EIP> openvpn-server.yml
+#   ansible-playbook -i inventory_openvpn.yml -e openvpn_public_ip=<EIP> openvpn-server.yml
 - name: Configure OpenVPN gateway on the management VPC
   hosts: vpn_server
   become: true
@@ -198,12 +198,13 @@
             echo "<key>"; cat /etc/openvpn/easy-rsa/pki/private/{{ item.name }}.key; echo "</key>"
             echo "<tls-auth>"; cat /etc/openvpn/server/ta.key; echo "</tls-auth>"
           } > "$out"
+          chown ubuntu:ubuntu "$out"
           chmod 600 "$out"
         }
-        build udp 1194 /root/{{ item.name }}.ovpn
-        build tcp-client 443 /root/{{ item.name }}-tcp.ovpn
+        build udp 1194 /home/ubuntu/{{ item.name }}.ovpn
+        build tcp-client 443 /home/ubuntu/{{ item.name }}-tcp.ovpn
       args:
-        creates: "/root/{{ item.name }}.ovpn"
+        creates: "/home/ubuntu/{{ item.name }}.ovpn"
       loop: "{{ vpn_users }}"
 
     - name: Allow forwarding to and from the VPN pool
@@ -253,9 +254,11 @@
         - openvpn-server@server
         - openvpn-server@server-tcp
 
+    # DevOps hands these files to each engineer; that is how a developer gets
+    # network access to dev without ever holding the EC2 key pair.
     - name: Fetch .ovpn profiles to the control node
       ansible.builtin.fetch:
-        src: "/root/{{ item }}"
+        src: "/home/ubuntu/{{ item }}"
         dest: "{{ playbook_dir }}/out/"
         flat: true
       loop: "{{ vpn_users | map(attribute='name') | map('regex_replace', '$', '.ovpn') | list }}"

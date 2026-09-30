@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Usage: export-kubeconfig.sh <rke2-management|rke2-dev|rke2-prod>
-# Đọc kubeconfig từ RKE2 master qua SSM (không SSH), trỏ server về internal NLB,
-# rồi lưu vào Secrets Manager để Jenkins / Argo CD dùng qua VPC peering.
+# Lấy kubeconfig từ RKE2 master qua SSH (jump = OpenVPN host), trỏ server về
+# internal NLB, rồi lưu Secrets Manager để Jenkins / Argo CD dùng qua peering.
 set -euo pipefail
 
 stack="${1:?stack: rke2-management|rke2-dev|rke2-prod}"
@@ -10,33 +10,24 @@ project="${PROJECT_NAME:-go-micro}"
 region="${AWS_DEFAULT_REGION:-ap-southeast-2}"
 repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
 chdir="${repo_root}/terraform/environments/${stack}"
+mgmt_chdir="${repo_root}/terraform/environments/rke2-management"
 
-master_id="$(terraform -chdir="$chdir" output -json master_instance_ids | python3 -c 'import json,sys; print(json.load(sys.stdin)[0])')"
+master_ip="$(terraform -chdir="$chdir" output -json master_private_ips | python3 -c 'import json,sys; print(json.load(sys.stdin)[0])')"
 api_dns="$(terraform -chdir="$chdir" output -raw api_dns_name)"
+node_key="$(terraform -chdir="$chdir" output -raw ssh_private_key_path)"
+jump_ip="$(terraform -chdir="$mgmt_chdir" output -raw openvpn_public_ip)"
+jump_key="$(terraform -chdir="$mgmt_chdir" output -raw ssh_private_key_path)"
 
-cmd_id="$(aws ssm send-command \
-  --region "$region" \
-  --instance-ids "$master_id" \
-  --document-name AWS-RunShellScript \
-  --parameters 'commands=["cat /etc/rancher/rke2/rke2.yaml"]' \
-  --query 'Command.CommandId' --output text)"
+ssh_opts="-o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o ConnectTimeout=15"
 
-for _ in $(seq 1 60); do
-  status="$(aws ssm get-command-invocation --region "$region" \
-    --command-id "$cmd_id" --instance-id "$master_id" \
-    --query Status --output text 2>/dev/null || echo Pending)"
-  [[ "$status" == "Success" || "$status" == "Failed" ]] && break
-  sleep 3
-done
+kubeconfig="$(ssh $ssh_opts -i "$node_key" \
+  -o ProxyCommand="ssh -W %h:%p -i ${jump_key} ${ssh_opts} ubuntu@${jump_ip}" \
+  "ubuntu@${master_ip}" 'sudo cat /etc/rancher/rke2/rke2.yaml')"
 
-if [[ "$status" != "Success" ]]; then
-  echo "SSM command ${cmd_id} ended as ${status}" >&2
+if [[ -z "$kubeconfig" ]]; then
+  echo "empty kubeconfig from ${master_ip}" >&2
   exit 1
 fi
-
-kubeconfig="$(aws ssm get-command-invocation --region "$region" \
-  --command-id "$cmd_id" --instance-id "$master_id" \
-  --query StandardOutputContent --output text)"
 
 # Server phải là internal NLB: DNS này đã nằm trong tls-san của apiserver nên
 # không cần insecure-skip-tls-verify.

@@ -33,3 +33,8 @@ output "openvpn_instance_id" {
   description = "Ansible connects here over SSM (no port 22)"
   value       = module.openvpn.instance_id
 }
+
+output "ssh_private_key_path" {
+  description = "Ansible / SSH key written by Terraform (gitignored)"
+  value       = module.keys.private_key_filename
+}

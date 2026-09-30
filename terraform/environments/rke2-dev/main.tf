@@ -10,6 +10,7 @@ module "network" {
   public_subnet_cidrs  = var.public_subnet_cidrs
   private_subnet_cidrs = var.private_subnet_cidrs
   api_peer_cidrs       = var.api_peer_cidrs
+  admin_ssh_cidr       = var.admin_ssh_cidr
 }
 
 module "iam" {
@@ -17,6 +18,14 @@ module "iam" {
 
   project_name = var.project_name
   environment  = var.environment
+}
+
+module "keys" {
+  source = "../../modules/keys"
+
+  project_name = var.project_name
+  environment  = var.environment
+  key_filename = "${path.module}/rke2-key-${var.environment}.pem"
 }
 
 module "token" {
@@ -54,6 +63,7 @@ module "nodes" {
   master_sg_id         = module.network.master_sg_id
   worker_sg_id         = module.network.worker_sg_id
   iam_instance_profile = module.iam.instance_profile_name
+  key_name             = module.keys.key_name
 
   api_dns_name               = module.lb.api_dns_name
   api_target_group_arn       = module.lb.api_target_group_arn

@@ -112,11 +112,12 @@ resource "aws_route_table_association" "private" {
 }
 
 # --- Security groups ---
-# No port 22 anywhere: node shell is SSM, human network access is the OpenVPN pool.
+# The OpenVPN host is the only box reachable from the internet. Nodes accept SSH
+# from that host, from the VPN pool and from the peered VPCs, never from outside.
 
 resource "aws_security_group" "openvpn" {
   name        = "${var.project_name}-openvpn-sg-${var.environment}"
-  description = "OpenVPN UDP 1194 + TCP 443 fallback"
+  description = "OpenVPN UDP 1194 + TCP 443 fallback + admin SSH"
   vpc_id      = aws_vpc.this.id
 
   ingress {
@@ -135,6 +136,24 @@ resource "aws_security_group" "openvpn" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Ansible bootstraps this host before any VPN exists, so SSH has to come from
+  # the operator address directly.
+  ingress {
+    description = "SSH from the operator running Ansible"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.admin_ssh_cidr]
+  }
+
+  ingress {
+    description = "SSH from VPN clients"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.vpn_client_cidr]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -149,8 +168,44 @@ resource "aws_security_group" "openvpn" {
 
 resource "aws_security_group" "node_common" {
   name        = "${var.project_name}-node-sg-${var.environment}"
-  description = "Shared RKE2 node rules (kubelet, CNI, VPN reachability)"
+  description = "Shared RKE2 node rules (SSH via jump, kubelet, CNI)"
   vpc_id      = aws_vpc.this.id
+
+  ingress {
+    description     = "SSH from the OpenVPN jump host"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.openvpn.id]
+  }
+
+  ingress {
+    description = "SSH from VPN clients"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.vpn_client_cidr]
+  }
+
+  ingress {
+    description = "SSH between nodes"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = aws_subnet.private[*].cidr_block
+  }
+
+  # Ansible and the kubeconfig export run from the peered VPCs too.
+  dynamic "ingress" {
+    for_each = length(var.api_peer_cidrs) > 0 ? [1] : []
+    content {
+      description = "SSH from peered VPCs (management jump, Jenkins)"
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      cidr_blocks = var.api_peer_cidrs
+    }
+  }
 
   ingress {
     description = "kubelet from nodes"

@@ -30,6 +30,7 @@ resource "aws_instance" "master" {
   subnet_id                   = var.private_subnet_ids[0]
   vpc_security_group_ids      = [var.node_common_sg_id, var.master_sg_id]
   iam_instance_profile        = var.iam_instance_profile
+  key_name                    = var.key_name
   associate_public_ip_address = false
 
   user_data = templatefile("${path.module}/userdata_master.sh", {
@@ -75,6 +76,7 @@ resource "aws_instance" "worker" {
   subnet_id                   = var.private_subnet_ids[count.index % length(var.private_subnet_ids)]
   vpc_security_group_ids      = [var.node_common_sg_id, var.worker_sg_id]
   iam_instance_profile        = var.iam_instance_profile
+  key_name                    = var.key_name
   associate_public_ip_address = false
 
   user_data = templatefile("${path.module}/userdata_worker.sh", {

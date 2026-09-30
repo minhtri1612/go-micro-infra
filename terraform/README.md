@@ -172,9 +172,24 @@ environments/rke2-prod/         10.2.0.0/16   RKE2 (private only)
 environments/networking/        peering: mgmt↔dev, mgmt↔prod, jenkins↔dev, jenkins↔prod
 ```
 
-`modules/`: `rke2-network`, `rke2-iam`, `rke2-token`, `rke2-lb`, `rke2-nodes`, `openvpn`.
+`modules/`: `rke2-network`, `rke2-iam`, `keys`, `rke2-token`, `rke2-lb`, `rke2-nodes`, `openvpn`.
 
-Node nằm **private subnet, không public IP, không port 22**: shell bằng SSM, người vào mạng bằng OpenVPN. NAT gateway mỗi VPC cho SSM / registry / `get.rke2.io`.
+### Đường vào: OpenVPN + SSH (không phải SSM)
+
+Node nằm **private subnet, không public IP**. Máy duy nhất hở internet là **OpenVPN host** ở public subnet của management; nó cũng là **jump host SSH** cho mọi node.
+
+```
+laptop --(.ovpn)--> OpenVPN host 10.0.1.x --peering--> dev 10.1.101.x / prod 10.2.101.x
+                         ^ ProxyCommand cho ansible / ssh / export-kubeconfig
+```
+
+Vì sao SSH chứ không SSM: Ansible chạy **native SSH** (không cần `aws_ssm` + bucket S3 trung chuyển từng task), và VPN cho **tunnel layer-3 thật** — `kubectl` tới internal NLB, `ping`/`nc`/`psql`, Argo CD UI, Grafana đều đi được, không phải mở một session port-forward cho từng port. Mô hình này cũng mang nguyên sang GCP/Azure/on-prem. IAM `AmazonSSMManagedInstanceCore` vẫn attach để **break-glass** khi VPN sập.
+
+Ranh giới sở hữu: **Terraform** = Security Group / route / peering / key pair. **Ansible** = `iptables` trên VPN host + user/`authorized_keys`/`sudoers` trên node. Không để Ansible sửa SG, nếu không `terraform apply` sau sẽ xoá mất.
+
+Key pair do Terraform sinh (`modules/keys`), private key ghi ra `environments/<stack>/rke2-key-<env>.pem` (gitignored `*.pem`). `admin_ssh_cidr` nên set `/32` IP của mày; mặc định `0.0.0.0/0` chỉ để lab.
+
+NAT gateway mỗi VPC cho registry / `get.rke2.io` / Secrets Manager.
 
 CNI là **Canal** (default RKE2). `rke2-ingress-nginx` bị `disable` vì Traefik do Argo CD quản lý và dùng NodePort **32080/32443** — public NLB trỏ vào 2 port đó (thay `host-nodeport-proxy` của Kind).
 
@@ -192,18 +207,30 @@ terraform -chdir=terraform/environments/$TF_STACK apply
 
 State key theo stack: `{stack}/terraform.tfstate`. Job Jenkins dùng `TF_STACK` (allowlist trong `jenkins/terraform/run.sh`).
 
-### OpenVPN (Ansible qua SSM)
-
-Playbook ở `ansible/openvpn-server.yml`, **không** SSH: `ansible_connection: community.aws.aws_ssm`.
+### OpenVPN server (Ansible qua SSH)
 
 ```bash
 cd ansible
-cp inventory_openvpn.example.yml inventory_openvpn.yml   # điền openvpn_instance_id + bucket
-cp group_vars/users.yml.example group_vars/users.yml
-ansible-playbook -e openvpn_public_ip="$(terraform -chdir=../terraform/environments/rke2-management output -raw openvpn_public_ip)" openvpn-server.yml
+cp inventory_openvpn.example.yml inventory_openvpn.yml   # điền openvpn_public_ip
+cp group_vars/users.yml.example group_vars/users.yml     # ai được .ovpn + SSH key + role
+ansible-playbook -i inventory_openvpn.yml openvpn-server.yml \
+  -e openvpn_public_ip="$(terraform -chdir=../terraform/environments/rke2-management output -raw openvpn_public_ip)"
 ```
 
-`.ovpn` về `ansible/out/` (gitignored). Firewall theo user: `10.8.0.51` (devops) đi hết, `10.8.0.50` (developer) vào được dev nhưng **DROP** sang prod.
+`.ovpn` (UDP 1194 + bản `-tcp` fallback 443) về `ansible/out/` — gitignored. **DevOps phát file này cho từng engineer**: nó cho quyền *mạng* vào VPC, không phải quyền login máy.
+
+Firewall theo user trên gateway: `10.8.0.51` (devops) đi hết, `10.8.0.50` (developer) vào được `10.1.0.0/16` nhưng **DROP** sang `10.2.0.0/16`.
+
+Chưa làm: `easyrsa revoke` + CRL (`crl-verify`) để thu hồi `.ovpn`.
+
+### Cấp quyền SSH trên node
+
+```bash
+scripts/rke2/gen-ansible-inventory.sh rke2-dev     # inventory + ProxyCommand qua jump
+cd ansible && ansible-playbook -i inventory_rke2-dev.yml nodes-access.yml
+```
+
+Tạo user theo `vpn_users`, đẩy `authorized_keys` (`exclusive: true`), và chỉ `role: devops` được `NOPASSWD` sudo. Thêm người = thêm entry vào `users.yml` rồi chạy lại playbook.
 
 ### kubeconfig cho Jenkins / Argo CD
 
@@ -211,4 +238,4 @@ ansible-playbook -e openvpn_public_ip="$(terraform -chdir=../terraform/environme
 scripts/rke2/export-kubeconfig.sh rke2-dev
 ```
 
-Đọc `/etc/rancher/rke2/rke2.yaml` qua SSM, đổi server thành internal NLB (đã có trong `tls-san`), lưu `go-micro/{env}/kubeconfig`. Jenkins ở `10.50.0.0/16` gọi apiserver qua peering — SG master đã mở 6443 cho `10.0.0.0/16` + `10.50.0.0/16`.
+SSH qua jump đọc `/etc/rancher/rke2/rke2.yaml`, đổi server thành internal NLB (đã có trong `tls-san`), lưu `go-micro/{env}/kubeconfig`. Jenkins ở `10.50.0.0/16` gọi apiserver qua peering — SG master mở 6443 cho `10.0.0.0/16` + `10.50.0.0/16`.

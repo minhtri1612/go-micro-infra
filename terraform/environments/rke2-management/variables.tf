@@ -62,3 +62,9 @@ variable "rke2_version" {
   type    = string
   default = "v1.28.15+rke2r1"
 }
+
+variable "admin_ssh_cidr" {
+  description = "Operator address /32 allowed to SSH the management OpenVPN host"
+  type        = string
+  default     = "0.0.0.0/0"
+}

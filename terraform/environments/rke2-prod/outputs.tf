@@ -24,3 +24,8 @@ output "web_dns_name" {
   description = "Public NLB in front of the Traefik NodePorts"
   value       = module.lb.web_dns_name
 }
+
+output "ssh_private_key_path" {
+  description = "Ansible / SSH key written by Terraform (gitignored)"
+  value       = module.keys.private_key_filename
+}

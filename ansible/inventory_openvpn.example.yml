@@ -1,14 +1,15 @@
-# Ansible reaches the OpenVPN host over SSM, not SSH: no key pair, no port 22.
-# Copy to inventory_openvpn.yml and fill the instance id from
-#   terraform -chdir=environments/rke2-management output openvpn_instance_id
+# Copy to inventory_openvpn.yml and fill the EIP:
+#   terraform -chdir=../terraform/environments/rke2-management output -raw openvpn_public_ip
 #
-# Needs: pip install boto3 ; ansible-galaxy collection install amazon.aws community.aws
-# plus the AWS session-manager-plugin on the machine running Ansible.
+# Run:
+#   ansible-playbook -i inventory_openvpn.yml openvpn-server.yml \
+#     -e openvpn_public_ip=<SAME_IP>
+#
+# This host is the only one reachable from the internet, and only from
+# admin_ssh_cidr. Everything private is reached by jumping through it.
 vpn_server:
   hosts:
-    i-REPLACE_WITH_OPENVPN_INSTANCE_ID:
-  vars:
-    ansible_connection: community.aws.aws_ssm
-    ansible_aws_ssm_region: ap-southeast-2
-    # Reuse the Terraform state bucket for SSM file transfer.
-    ansible_aws_ssm_bucket_name: go-micro-tfstate-REPLACE_WITH_ACCOUNT_ID
+    openvpn:
+      ansible_host: REPLACE_WITH_OPENVPN_PUBLIC_IP
+      ansible_user: ubuntu
+      ansible_ssh_private_key_file: ../terraform/environments/rke2-management/rke2-key-management.pem

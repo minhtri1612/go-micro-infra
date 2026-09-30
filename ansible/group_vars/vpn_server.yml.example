@@ -1,0 +1,4 @@
+# Copy to vpn_server.yml. Do not commit real IPs or key paths.
+ansible_user: ubuntu
+ansible_ssh_common_args: "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o AddressFamily=inet"
+ansible_ssh_private_key_file: "/ABSOLUTE/PATH/TO/terraform/environments/rke2-management/rke2-key-management.pem"

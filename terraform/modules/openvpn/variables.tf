@@ -29,6 +29,11 @@ variable "iam_instance_profile" {
   type = string
 }
 
+variable "key_name" {
+  description = "EC2 key pair: Ansible SSHes in here and jumps to the private nodes"
+  type        = string
+}
+
 variable "root_volume_size" {
   type    = number
   default = 20

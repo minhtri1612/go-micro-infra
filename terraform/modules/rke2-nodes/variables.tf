@@ -74,6 +74,11 @@ variable "iam_instance_profile" {
   type = string
 }
 
+variable "key_name" {
+  description = "EC2 key pair; SSH only reaches these nodes through the OpenVPN jump host"
+  type        = string
+}
+
 variable "api_dns_name" {
   description = "Internal NLB DNS, added to the apiserver tls-san"
   type        = string

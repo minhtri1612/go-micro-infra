@@ -31,6 +31,12 @@ variable "vpn_client_cidr" {
   default     = "10.8.0.0/24"
 }
 
+variable "admin_ssh_cidr" {
+  description = "Operator address allowed to SSH the OpenVPN host before the VPN is up"
+  type        = string
+  default     = "0.0.0.0/0"
+}
+
 variable "http_node_port" {
   type    = number
   default = 32080

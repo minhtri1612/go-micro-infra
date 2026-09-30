@@ -1,0 +1,52 @@
+---
+# Who can SSH which node, driven by group_vars/users.yml.
+# Terraform owns the Security Groups; this playbook only owns OS-level access,
+# so the two never fight over the same resource.
+#
+#   ../scripts/rke2/gen-ansible-inventory.sh rke2-dev
+#   ansible-playbook -i inventory_rke2-dev.yml nodes-access.yml
+- name: Manage engineer accounts on the RKE2 nodes
+  hosts: rke2_nodes
+  become: true
+  vars_files:
+    - group_vars/users.yml
+
+  tasks:
+    - name: Create an account per engineer
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        shell: /bin/bash
+        state: present
+      loop: "{{ vpn_users }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Install their SSH public key
+      ansible.posix.authorized_key:
+        user: "{{ item.name }}"
+        key: "{{ item.ssh_public_key }}"
+        state: present
+        exclusive: true
+      loop: "{{ vpn_users }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    # Only the devops role gets root on the nodes; developers land in a plain
+    # shell and go through kubectl for anything in the cluster.
+    - name: Grant passwordless sudo to the devops role
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ item.name }}"
+        mode: "0440"
+        validate: "visudo -cf %s"
+        content: "{{ item.name }} ALL=(ALL) NOPASSWD:ALL\n"
+      loop: "{{ vpn_users | selectattr('role', 'equalto', 'devops') | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Drop sudo for everyone else
+      ansible.builtin.file:
+        path: "/etc/sudoers.d/{{ item.name }}"
+        state: absent
+      loop: "{{ vpn_users | rejectattr('role', 'equalto', 'devops') | list }}"
+      loop_control:
+        label: "{{ item.name }}"
