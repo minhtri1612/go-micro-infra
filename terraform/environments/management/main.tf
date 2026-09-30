@@ -47,7 +47,7 @@ module "jenkins_host" {
   use_spot             = var.jenkins_use_spot
   subnet_id            = module.vpc.public_subnet_id
   vpc_id               = module.vpc.vpc_id
-  iam_instance_profile = module.ec2_ssm.instance_profile_name
+  iam_instance_profile = module.jenkins_iam.instance_profile_name
   ingress_cidr         = "0.0.0.0/0"
   allowed_tcp_ports    = [8080]
   root_volume_size     = var.jenkins_root_volume_size

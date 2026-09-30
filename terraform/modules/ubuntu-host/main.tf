@@ -56,6 +56,11 @@ resource "aws_instance" "this" {
   associate_public_ip_address = true
   user_data                   = var.user_data
   user_data_replace_on_change = false
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
 
   dynamic "instance_market_options" {
     for_each = var.use_spot ? [1] : []
@@ -83,7 +88,7 @@ resource "aws_instance" "this" {
     create_before_destroy = true
     # Rescue/import: instance user_data/metadata often empty vs this module.
     # Changing them in-place is a reboot; ignore so apply does not replace the host.
-    ignore_changes = [user_data, user_data_base64, metadata_options]
+    ignore_changes = [user_data, user_data_base64]
   }
 }
 

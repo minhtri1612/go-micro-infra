@@ -41,9 +41,9 @@ output "jenkins_ssm_command" {
   value = "aws ssm start-session --target ${module.jenkins_host.instance_id} --region ${var.aws_region}"
 }
 
-output "jenkins_url" {
-  description = "Jenkins UI (GitHub webhooks need this reachable)."
-  value       = "http://${module.jenkins_host.public_ip}:8080"
+output "jenkins_runtime_secret_name" {
+  description = "AWS Secrets Manager name. Seed JSON (see jenkins/secrets.example.json). Not in git."
+  value       = aws_secretsmanager_secret.jenkins_runtime.name
 }
 
 output "app_credentials_secret_names" {
