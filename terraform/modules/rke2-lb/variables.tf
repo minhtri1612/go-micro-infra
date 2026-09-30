@@ -31,3 +31,9 @@ variable "https_node_port" {
   type    = number
   default = 32443
 }
+
+variable "extra_listeners" {
+  description = "Public NLB listen port => instance NodePort (Grafana 32000, Prometheus 32090)"
+  type        = map(number)
+  default     = {}
+}

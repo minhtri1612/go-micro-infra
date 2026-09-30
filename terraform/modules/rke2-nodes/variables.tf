@@ -105,3 +105,12 @@ variable "https_node_port" {
   type    = number
   default = 32443
 }
+
+variable "extra_target_groups" {
+  description = "Additional NLB target groups to attach at the given NodePort"
+  type = map(object({
+    arn  = string
+    port = number
+  }))
+  default = {}
+}

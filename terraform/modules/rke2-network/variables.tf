@@ -46,3 +46,15 @@ variable "https_node_port" {
   type    = number
   default = 32443
 }
+
+variable "extra_node_ports" {
+  description = "Additional NodePorts on masters/workers from the web NLB (Grafana, Prometheus, Argo)"
+  type        = list(number)
+  default     = []
+}
+
+variable "extra_nlb_ports" {
+  description = "Additional listen ports on the public NLB security group"
+  type        = list(number)
+  default     = []
+}

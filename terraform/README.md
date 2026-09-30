@@ -195,7 +195,21 @@ CNI là **Canal** (default RKE2). `rke2-ingress-nginx` bị `disable` vì Traefi
 
 Token cluster do Terraform sinh và lưu Secrets Manager `go-micro/{env}/rke2-token`, không qua tfvars.
 
-### Thứ tự apply
+### Who lives on management
+
+| Piece | Where | How it gets there |
+|---|---|---|
+| OpenVPN + jump SSH | EC2 public subnet, EIP | Terraform `module.openvpn` + `./provision.py` Ansible |
+| Ansible playbooks | `ansible/` in this repo | run from laptop through the jump |
+| Argo CD | **RKE2 management cluster** | `./configure.py management` Helm |
+| Prometheus + Grafana | **same cluster** | Argo CD Application `05-monitoring-mgmt.yaml` |
+| Jenkins | **EC2 in the same VPC**, docker compose | Terraform `module.jenkins` — not a pod (`docker.sock` / containerd) |
+
+```bash
+./provision.py management          # terraform + OpenVPN + kubeconfig
+sudo openvpn --config ansible/out/devops.ovpn
+./configure.py management          # EBS CSI, Argo CD, kube-prometheus-stack
+```
 
 `networking/` đọc VPC theo tag nên dev/prod là optional — apply được ngay sau management.
 

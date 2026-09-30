@@ -70,3 +70,9 @@ module "nodes" {
   web_http_target_group_arn  = module.lb.web_http_target_group_arn
   web_https_target_group_arn = module.lb.web_https_target_group_arn
 }
+
+module "eso_iam" {
+  source              = "../../modules/eso-iam"
+  project_name        = var.project_name
+  eso_iam_user_suffix = "rke2-${var.environment}"
+}

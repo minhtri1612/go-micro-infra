@@ -17,3 +17,12 @@ output "web_http_target_group_arn" {
 output "web_https_target_group_arn" {
   value = aws_lb_target_group.web_https.arn
 }
+
+output "extra_target_groups" {
+  value = {
+    for k, tg in aws_lb_target_group.extra : k => {
+      arn  = tg.arn
+      port = tg.port
+    }
+  }
+}

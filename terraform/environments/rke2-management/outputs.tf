@@ -30,8 +30,20 @@ output "openvpn_public_ip" {
 }
 
 output "openvpn_instance_id" {
-  description = "Ansible connects here over SSM (no port 22)"
+  description = "SSH jump / Ansible target for the OpenVPN gateway"
   value       = module.openvpn.instance_id
+}
+
+output "jenkins_public_ip" {
+  value = module.jenkins.public_ip
+}
+
+output "jenkins_instance_id" {
+  value = module.jenkins.instance_id
+}
+
+output "jenkins_url" {
+  value = "http://${module.jenkins.public_ip}:8080"
 }
 
 output "ssh_private_key_path" {

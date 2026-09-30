@@ -10,6 +10,10 @@ module "network" {
   public_subnet_cidrs  = var.public_subnet_cidrs
   private_subnet_cidrs = var.private_subnet_cidrs
   admin_ssh_cidr       = var.admin_ssh_cidr
+  # Management has no Traefik. Public NLB :443 fronts Argo CD NodePort.
+  https_node_port  = 30443
+  extra_node_ports = [32000, 32090]
+  extra_nlb_ports  = [32000, 32090]
 }
 
 module "iam" {
@@ -43,6 +47,11 @@ module "lb" {
   public_subnet_ids  = module.network.public_subnet_ids
   private_subnet_ids = module.network.private_subnet_ids
   web_nlb_sg_id      = module.network.web_nlb_sg_id
+  https_node_port    = 30443
+  extra_listeners = {
+    "32000" = 32000
+    "32090" = 32090
+  }
 }
 
 module "nodes" {
@@ -68,6 +77,8 @@ module "nodes" {
   api_target_group_arn       = module.lb.api_target_group_arn
   web_http_target_group_arn  = module.lb.web_http_target_group_arn
   web_https_target_group_arn = module.lb.web_https_target_group_arn
+  https_node_port            = 30443
+  extra_target_groups        = module.lb.extra_target_groups
 }
 
 module "openvpn" {

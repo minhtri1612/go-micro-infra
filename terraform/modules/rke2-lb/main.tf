@@ -117,3 +117,38 @@ resource "aws_lb_listener" "web_https" {
     target_group_arn = aws_lb_target_group.web_https.arn
   }
 }
+
+resource "aws_lb_target_group" "extra" {
+  for_each = var.extra_listeners
+
+  name        = "${var.project_name}-p${each.key}-${var.environment}"
+  port        = each.value
+  protocol    = "TCP"
+  vpc_id      = var.vpc_id
+  target_type = "instance"
+
+  health_check {
+    protocol            = "TCP"
+    port                = "traffic-port"
+    interval            = 10
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+  }
+
+  tags = {
+    Name = "${var.project_name}-p${each.key}-${var.environment}"
+  }
+}
+
+resource "aws_lb_listener" "extra" {
+  for_each = var.extra_listeners
+
+  load_balancer_arn = aws_lb.web.arn
+  port              = tonumber(each.key)
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.extra[each.key].arn
+  }
+}

@@ -29,3 +29,13 @@ output "ssh_private_key_path" {
   description = "Ansible / SSH key written by Terraform (gitignored)"
   value       = module.keys.private_key_filename
 }
+
+output "eso_access_key_id" {
+  value     = module.eso_iam.eso_access_key_id
+  sensitive = true
+}
+
+output "eso_secret_access_key" {
+  value     = module.eso_iam.eso_secret_access_key
+  sensitive = true
+}

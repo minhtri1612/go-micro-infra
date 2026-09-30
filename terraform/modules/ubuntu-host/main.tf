@@ -53,6 +53,7 @@ resource "aws_instance" "this" {
   subnet_id                   = var.subnet_id
   vpc_security_group_ids      = [aws_security_group.this.id]
   iam_instance_profile        = var.iam_instance_profile
+  key_name                    = var.key_name
   associate_public_ip_address = true
   user_data                   = var.user_data
   user_data_replace_on_change = false

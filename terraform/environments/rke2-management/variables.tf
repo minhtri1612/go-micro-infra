@@ -35,17 +35,17 @@ variable "private_subnet_cidrs" {
 
 variable "master_instance_type" {
   type    = string
-  default = "t3.medium"
+  default = "t3.large"
 }
 
 variable "worker_instance_type" {
   type    = string
-  default = "t3.medium"
+  default = "t3.large"
 }
 
 variable "worker_count" {
   type    = number
-  default = 1
+  default = 2
 }
 
 variable "use_spot" {
@@ -61,6 +61,17 @@ variable "openvpn_instance_type" {
 variable "rke2_version" {
   type    = string
   default = "v1.28.15+rke2r1"
+}
+
+variable "jenkins_instance_type" {
+  type    = string
+  default = "t3.medium"
+}
+
+variable "jenkins_runtime_secret_name" {
+  description = "Existing Secrets Manager secret used by load-runtime-env.sh"
+  type        = string
+  default     = "go-micro/jenkins/runtime"
 }
 
 variable "admin_ssh_cidr" {

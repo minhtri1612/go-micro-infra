@@ -272,6 +272,17 @@ resource "aws_security_group" "web_nlb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  dynamic "ingress" {
+    for_each = var.extra_nlb_ports
+    content {
+      description = "Platform NLB ${ingress.value}"
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -342,6 +353,17 @@ resource "aws_security_group" "master" {
     security_groups = [aws_security_group.web_nlb.id]
   }
 
+  dynamic "ingress" {
+    for_each = var.extra_node_ports
+    content {
+      description     = "Platform NodePort ${ingress.value} from web NLB"
+      from_port       = ingress.value
+      to_port         = ingress.value
+      protocol        = "tcp"
+      security_groups = [aws_security_group.web_nlb.id]
+    }
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -373,6 +395,17 @@ resource "aws_security_group" "worker" {
     to_port         = var.https_node_port
     protocol        = "tcp"
     security_groups = [aws_security_group.web_nlb.id]
+  }
+
+  dynamic "ingress" {
+    for_each = var.extra_node_ports
+    content {
+      description     = "Platform NodePort ${ingress.value} from web NLB"
+      from_port       = ingress.value
+      to_port         = ingress.value
+      protocol        = "tcp"
+      security_groups = [aws_security_group.web_nlb.id]
+    }
   }
 
   egress {

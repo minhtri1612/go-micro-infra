@@ -149,3 +149,42 @@ resource "aws_lb_target_group_attachment" "web_https_worker" {
   target_id        = aws_instance.worker[count.index].id
   port             = var.https_node_port
 }
+
+locals {
+  extra_master_attach = flatten([
+    for k, tg in var.extra_target_groups : [
+      for i in range(var.master_count) : {
+        key  = "${k}-m${i}"
+        arn  = tg.arn
+        port = tg.port
+        id   = aws_instance.master[i].id
+      }
+    ]
+  ])
+  extra_worker_attach = flatten([
+    for k, tg in var.extra_target_groups : [
+      for i in range(var.worker_count) : {
+        key  = "${k}-w${i}"
+        arn  = tg.arn
+        port = tg.port
+        id   = aws_instance.worker[i].id
+      }
+    ]
+  ])
+}
+
+resource "aws_lb_target_group_attachment" "extra_master" {
+  for_each = { for a in local.extra_master_attach : a.key => a }
+
+  target_group_arn = each.value.arn
+  target_id        = each.value.id
+  port             = each.value.port
+}
+
+resource "aws_lb_target_group_attachment" "extra_worker" {
+  for_each = { for a in local.extra_worker_attach : a.key => a }
+
+  target_group_arn = each.value.arn
+  target_id        = each.value.id
+  port             = each.value.port
+}

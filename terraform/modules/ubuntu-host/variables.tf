@@ -66,3 +66,9 @@ variable "allocate_eip" {
   type    = bool
   default = true
 }
+
+variable "key_name" {
+  description = "Optional EC2 key pair (SSH). Null = SSM-only host."
+  type        = string
+  default     = null
+}
