@@ -1,5 +1,5 @@
 jenkins:
-  systemMessage: "go-micro CI — Jenkins ngoài cluster. 1 job / service. CD = Argo CD."
+  systemMessage: "go-micro CI. Developer: folder services only. Push main → image + env/dev.yaml."
   numExecutors: 2
   mode: NORMAL
   securityRealm:
@@ -30,7 +30,7 @@ jenkins:
               - user: "${JENKINS_DEVELOPER_ID}"
         items:
           - name: "developer-services"
-            pattern: "^services/.*"
+            pattern: "^services(/.*)?$"
             permissions:
               - "Job/Read"
               - "Job/Discover"
@@ -40,7 +40,7 @@ jenkins:
             entries:
               - user: "${JENKINS_DEVELOPER_ID}"
           - name: "devops-platform"
-            pattern: "^platform/.*"
+            pattern: "^platform(/.*)?$"
             permissions:
               - "Job/Read"
               - "Job/Discover"
