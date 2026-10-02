@@ -21,7 +21,7 @@ data "aws_ami" "ubuntu" {
 
 resource "aws_security_group" "this" {
   name        = "${var.project_name}-${var.name}-sg"
-  description = "Lab UI ports for ${var.name} (no SSH; use SSM)"
+  description = "Host ports for ${var.name}"
   vpc_id      = var.vpc_id
 
   dynamic "ingress" {
@@ -31,7 +31,7 @@ resource "aws_security_group" "this" {
       from_port   = ingress.value
       to_port     = ingress.value
       protocol    = "tcp"
-      cidr_blocks = [var.ingress_cidr]
+      cidr_blocks = var.ingress_cidrs
     }
   }
 
@@ -54,7 +54,7 @@ resource "aws_instance" "this" {
   vpc_security_group_ids      = [aws_security_group.this.id]
   iam_instance_profile        = var.iam_instance_profile
   key_name                    = var.key_name
-  associate_public_ip_address = true
+  associate_public_ip_address = var.associate_public_ip_address
   user_data                   = var.user_data
   user_data_replace_on_change = false
   metadata_options {

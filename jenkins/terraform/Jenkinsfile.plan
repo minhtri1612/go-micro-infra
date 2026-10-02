@@ -6,20 +6,39 @@ pipeline {
     skipDefaultCheckout(false)
   }
   parameters {
-    string(name: 'GIT_REF', defaultValue: 'origin/main', description: 'Manual: branch/SHA. Webhook sets GIT_SHA / PR_NUMBER.')
-    string(name: 'GH_PR_NUMBER', defaultValue: '', description: 'Manual PR number. Webhook sets PR_NUMBER.')
+    string(name: 'GIT_REF', defaultValue: 'origin/main', description: 'Manual: branch/SHA. Cron uses latest-open-pr when GH_PR_NUMBER is empty.')
+    string(name: 'GH_PR_NUMBER', defaultValue: '', description: 'Manual PR number. Empty = newest open PR targeting main.')
   }
   environment {
     AWS_DEFAULT_REGION = 'ap-southeast-2'
     GITHUB_REPO        = 'minhtri1612/go-micro-infra'
   }
   stages {
-    stage('Checkout PR') {
+    stage('Resolve PR') {
       steps {
         script {
-          env.PLAN_REF = (env.GIT_SHA ?: '').trim() ?: (env.GIT_REF ?: params.GIT_REF)
-          env.PLAN_PR  = (env.PR_NUMBER ?: '').trim() ?: (params.GH_PR_NUMBER ?: '')
+          env.SKIP_PLAN = '0'
+          env.PLAN_PR  = (params.GH_PR_NUMBER ?: '').trim()
+          env.PLAN_REF = (params.GIT_REF ?: 'origin/main').trim()
+          if (!env.PLAN_PR) {
+            withCredentials([usernamePassword(credentialsId: 'github-go-micro-pat', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_PAT')]) {
+              def line = sh(returnStdout: true, script: 'chmod +x jenkins/terraform/github.sh && jenkins/terraform/github.sh latest-open-pr').trim()
+              if (!line) {
+                echo 'No open PR targeting main; skip plan.'
+                env.SKIP_PLAN = '1'
+              } else {
+                def parts = line.split('\t')
+                env.PLAN_PR  = parts[0]
+                env.PLAN_REF = parts[1]
+              }
+            }
+          }
         }
+      }
+    }
+    stage('Checkout PR') {
+      when { environment name: 'SKIP_PLAN', value: '0' }
+      steps {
         sh '''
           set -euo pipefail
           git fetch --no-tags origin +refs/heads/*:refs/remotes/origin/* +refs/pull/*/head:refs/remotes/origin/pr/*
@@ -33,6 +52,7 @@ pipeline {
       }
     }
     stage('Detect terraform') {
+      when { environment name: 'SKIP_PLAN', value: '0' }
       steps {
         script {
           def rc = sh(returnStatus: true, script: '''
@@ -46,7 +66,12 @@ pipeline {
       }
     }
     stage('fmt validate plan') {
-      when { environment name: 'TF_CHANGED', value: '1' }
+      when {
+        allOf {
+          environment name: 'SKIP_PLAN', value: '0'
+          environment name: 'TF_CHANGED', value: '1'
+        }
+      }
       steps {
         withCredentials([
           usernamePassword(credentialsId: 'aws-terraform-plan', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
@@ -62,6 +87,7 @@ pipeline {
     stage('Comment PR') {
       when {
         allOf {
+          environment name: 'SKIP_PLAN', value: '0'
           environment name: 'TF_CHANGED', value: '1'
           expression { return env.PLAN_PR?.trim() }
         }
@@ -76,6 +102,9 @@ pipeline {
   post {
     success {
       script {
+        if (env.SKIP_PLAN == '1' || !(env.PLAN_SHA ?: '').trim()) {
+          return
+        }
         def desc = (env.TF_CHANGED == '1') ? 'plan ok' : 'no terraform/** changes'
         withCredentials([usernamePassword(credentialsId: 'github-go-micro-pat', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_PAT')]) {
           sh "jenkins/terraform/github.sh status '${env.PLAN_SHA}' success '${desc}'"

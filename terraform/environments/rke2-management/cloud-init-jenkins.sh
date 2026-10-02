@@ -23,8 +23,10 @@ snap install amazon-ssm-agent --classic
 systemctl enable --now snap.amazon-ssm-agent.amazon-ssm-agent.service
 
 cat >/etc/motd <<'EOF'
-go-micro Jenkins (management VPC). Docker compose, not a Kubernetes pod:
+go-micro Jenkins (private subnet, VPN only). Docker compose, not a Kubernetes pod:
 RKE2 nodes run containerd, so this host keeps docker.sock for CI builds.
+
+GitHub cannot webhook this host. Jobs poll SCM.
 
   git clone https://github.com/minhtri1612/go-micro-infra.git ~/go-micro-infra
   cd ~/go-micro-infra/jenkins

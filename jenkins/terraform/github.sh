@@ -21,7 +21,7 @@ github_f() {
     "$@"
 }
 
-cmd="${1:?usage: github.sh status|comment-plan|pr-summary ...}"
+cmd="${1:?usage: github.sh status|comment-plan|pr-summary|latest-open-pr ...}"
 shift
 
 case "${cmd}" in
@@ -58,6 +58,10 @@ case "${cmd}" in
       jq -r '.[].body' |
       sed -n 's/.*<!-- tf-plan-summary:\([^>]*\) -->.*/\1/p' |
       tail -n1
+    ;;
+  latest-open-pr)
+    github "${API}/repos/${REPO}/pulls?state=open&base=main&sort=updated&direction=desc&per_page=1" |
+      jq -r '.[0] | select(.) | "\(.number)\t\(.head.sha)"'
     ;;
   *)
     echo "unknown ${cmd}" >&2

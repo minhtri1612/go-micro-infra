@@ -45,7 +45,7 @@ variable "worker_instance_type" {
 
 variable "worker_count" {
   type    = number
-  default = 2
+  default = 1
 }
 
 variable "use_spot" {

@@ -21,7 +21,7 @@ output "api_dns_name" {
 }
 
 output "web_dns_name" {
-  description = "Public NLB in front of the Traefik NodePorts"
+  description = "Internal NLB for Argo CD / Grafana (VPN only, not public)"
   value       = module.lb.web_dns_name
 }
 
@@ -34,8 +34,8 @@ output "openvpn_instance_id" {
   value       = module.openvpn.instance_id
 }
 
-output "jenkins_public_ip" {
-  value = module.jenkins.public_ip
+output "jenkins_private_ip" {
+  value = module.jenkins.private_ip
 }
 
 output "jenkins_instance_id" {
@@ -43,7 +43,8 @@ output "jenkins_instance_id" {
 }
 
 output "jenkins_url" {
-  value = "http://${module.jenkins.public_ip}:8080"
+  description = "Reachable over the VPN, not the internet"
+  value       = "http://${module.jenkins.private_ip}:8080"
 }
 
 output "ssh_private_key_path" {

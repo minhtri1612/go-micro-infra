@@ -6,7 +6,7 @@ pipeline {
     skipDefaultCheckout(false)
   }
   parameters {
-    choice(name: 'ACTION', choices: ['apply', 'destroy-target'], description: 'Webhook merge always apply. destroy-target is manual only.')
+    choice(name: 'ACTION', choices: ['apply', 'destroy-target'], description: 'SCM poll / merge uses apply. destroy-target is manual only.')
     string(name: 'TARGET', defaultValue: '', description: 'Unused. destroy-target is retired.')
     booleanParam(name: 'SKIP_PR_COMPARE', defaultValue: false, description: 'false = require PR plan summary match. true for emergency, destroy-target, or manual apply when HEAD is not a terraform PR.')
     string(name: 'PR_PLAN_SUMMARY', defaultValue: '', description: 'Optional override. Else read <!-- tf-plan-summary --> from merged PR.')
@@ -31,9 +31,8 @@ pipeline {
       when { expression { return params.ACTION == 'apply' } }
       steps {
         script {
-          // Webhook sets PUSH_REF. UI "Build with Parameters" does not — always apply current main.
-          def manual = !(env.PUSH_REF ?: '').trim()
-          if (manual) {
+          def userTriggered = !currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause').isEmpty()
+          if (userTriggered) {
             env.TF_CHANGED = '1'
             echo "TF_CHANGED=1 (manual apply)"
           } else {

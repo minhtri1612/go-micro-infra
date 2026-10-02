@@ -1,5 +1,6 @@
-# Management cluster: Argo CD + monitoring hub. No app workloads.
-# OpenVPN lives here only; dev/prod are reached over VPC peering.
+# Management cluster: Argo CD + monitoring hub on the agent. No app/DB.
+# OpenVPN is the only public EC2. Jenkins is a private VM (docker.sock).
+# Argo CD UI is the internal NLB, reachable over VPN only.
 
 module "network" {
   source = "../../modules/rke2-network"
@@ -10,10 +11,13 @@ module "network" {
   public_subnet_cidrs  = var.public_subnet_cidrs
   private_subnet_cidrs = var.private_subnet_cidrs
   admin_ssh_cidr       = var.admin_ssh_cidr
-  # Management has no Traefik. Public NLB :443 fronts Argo CD NodePort.
-  https_node_port  = 30443
-  extra_node_ports = [32000, 32090]
-  extra_nlb_ports  = [32000, 32090]
+  https_node_port      = 30443
+  extra_node_ports     = [32000, 32090]
+  extra_nlb_ports      = [32000, 32090]
+  web_nlb_ingress_cidrs = [
+    var.vpc_cidr,
+    "10.8.0.0/24",
+  ]
 }
 
 module "iam" {
@@ -48,6 +52,7 @@ module "lb" {
   private_subnet_ids = module.network.private_subnet_ids
   web_nlb_sg_id      = module.network.web_nlb_sg_id
   https_node_port    = 30443
+  internal_web       = true
   extra_listeners = {
     "32000" = 32000
     "32090" = 32090

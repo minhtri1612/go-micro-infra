@@ -54,7 +54,13 @@ variable "extra_node_ports" {
 }
 
 variable "extra_nlb_ports" {
-  description = "Additional listen ports on the public NLB security group"
+  description = "Additional listen ports on the web NLB security group"
   type        = list(number)
   default     = []
+}
+
+variable "web_nlb_ingress_cidrs" {
+  description = "Who may hit the web NLB. dest/prod: 0.0.0.0/0. management: VPC + VPN only."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
 }

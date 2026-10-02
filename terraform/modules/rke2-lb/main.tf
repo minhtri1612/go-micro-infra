@@ -43,13 +43,14 @@ resource "aws_lb_listener" "api" {
   }
 }
 
-# Public NLB in front of the Traefik NodePorts 32080/32443.
+# dest/prod: public NLB in front of Traefik NodePorts.
+# management: internal NLB in front of Argo CD / Grafana (VPN only).
 resource "aws_lb" "web" {
   name               = "${var.project_name}-web-${var.environment}"
-  internal           = false
+  internal           = var.internal_web
   load_balancer_type = "network"
   security_groups    = [var.web_nlb_sg_id]
-  subnets            = var.public_subnet_ids
+  subnets            = var.internal_web ? var.private_subnet_ids : var.public_subnet_ids
 
   tags = {
     Name = "${var.project_name}-web-${var.environment}"

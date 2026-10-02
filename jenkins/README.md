@@ -1,6 +1,6 @@
 # Jenkins CI (ngoài cluster)
 
-Jenkins **không** chạy trong RKE2, không do Helm/Argo quản. Đây là server CI (`docker compose`) trên EC2 trong VPC management.
+Jenkins **không** chạy trong RKE2, không do Helm/Argo quản. Đây là server CI (`docker compose`) trên EC2 **private subnet** VPC management. UI chỉ qua VPN, không EIP.
 
 ## Vận hành
 
@@ -24,8 +24,10 @@ User login: **GitHub OAuth**. Jenkins không lưu password. SM chỉ giữ **OAu
 
 GitHub → Settings → Developer settings → OAuth Apps → New:
 
-- Homepage: `http://<jenkins-eip>:8080/`
-- Authorization callback: `http://<jenkins-eip>:8080/securityRealm/finishLogin`
+- Homepage: `http://<jenkins-private-ip>:8080/`
+- Authorization callback: `http://<jenkins-private-ip>:8080/securityRealm/finishLogin`
+
+Browser phải đang nối OpenVPN; GitHub chỉ redirect về URL đó.
 
 `JENKINS_ADMIN_ID` / `JENKINS_DEVELOPER_ID` trong secret = **hai GitHub username khác nhau** (Role Strategy `entries.user`). `dest` là môi trường (`env/dev.yaml`), không phải role Jenkins. Tạo OAuth App + ghi 2 key vào SM **trước** khi `compose up` (sai callback = lockout).
 
@@ -42,11 +44,7 @@ Shape JSON: `jenkins/secrets.example.json`. File `.env.runtime` sinh ra trên di
 
 `cp .env.example .env` đã bỏ. Đừng commit password.
 
-Webhook GitHub từng service repo:
-
-`http://<ip-máy-jenkins>:8080/github-webhook/`
-
-event: `push`.
+GitHub **không** webhook được Jenkins private. Job `services/*` scan repo mỗi 2 phút (`periodicFolderTrigger`). Terraform plan cron mỗi ~2 phút (open PR), apply poll `main`.
 
 Job: `services/product`, `services/order`, … và `platform/terraform-management-plan`, `platform/terraform-management-apply`.
 
@@ -54,15 +52,15 @@ Job: `services/product`, `services/order`, … và `platform/terraform-managemen
 
 Không `ciTerraform`. Job DSL folder `platform/`. Jenkinsfile **luôn từ `main`**.
 
-1. PR đụng `terraform/**` → GitHub `pull_request` → job **plan** (check `terraform-plan`, comment summary). PR không đụng terraform → check xanh, skip plan.
-2. Merge `main` → GitHub `push` → job **apply** (re-plan, so sánh `<!-- tf-plan-summary -->`, `apply tfplan`).
+1. PR đụng `terraform/**` → job **plan** poll GitHub (check `terraform-plan`, comment summary). PR không đụng terraform → check xanh, skip plan.
+2. Merge `main` → job **apply** poll SCM (re-plan, so sánh `<!-- tf-plan-summary -->`, `apply tfplan`).
 3. CODEOWNERS ghi owner; lab 1 DevOps **không** bật required reviews.
 
 `TF_STACK` mặc định `rke2-management` (allowlist: `rke2-management` `rke2-dev` `rke2-prod` `networking`).
 
 ### Trên EC2 Jenkins
 
-Webhook tokens và AWS plan/apply keys nằm trong secret `go-micro/jenkins/runtime`.
+AWS plan/apply keys nằm trong secret `go-micro/jenkins/runtime`.
 
 ```bash
 cd ~/go-micro-infra && git pull
@@ -74,12 +72,7 @@ chmod +x github/configure-repo.sh
 ./github/configure-repo.sh
 ```
 
-Webhook GitHub **service** vẫn `http://<jenkins>:8080/github-webhook/` event `push`.
-
-Terraform:
-
-- plan: `http://<jenkins>:8080/generic-webhook-trigger/invoke?token=<TF_PLAN_WEBHOOK_TOKEN>` event `pull_request`
-- apply: `...?token=<TF_APPLY_WEBHOOK_TOKEN>` event `push`
+Không tạo GitHub webhook. `configure-repo.sh` chỉ bật branch protection (`terraform-plan`).
 
 ### Manual / emergency
 

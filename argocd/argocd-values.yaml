@@ -11,6 +11,7 @@ server:
     create: false
   service:
     type: NodePort
+    # Internal NLB :443 → this NodePort. Not on a public listener.
     nodePortHttps: 30443
 
 applicationSet:

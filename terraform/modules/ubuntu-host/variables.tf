@@ -46,8 +46,14 @@ variable "iam_instance_profile" {
   type = string
 }
 
-variable "ingress_cidr" {
-  type = string
+variable "ingress_cidrs" {
+  description = "CIDRs allowed on allowed_tcp_ports (Jenkins: VPC + VPN, never 0.0.0.0/0)"
+  type        = list(string)
+}
+
+variable "associate_public_ip_address" {
+  type    = bool
+  default = true
 }
 
 variable "allowed_tcp_ports" {

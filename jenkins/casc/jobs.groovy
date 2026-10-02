@@ -30,6 +30,11 @@ services.each { svc ->
         scriptPath('Jenkinsfile')
       }
     }
+    triggers {
+      periodicFolderTrigger {
+        interval('2m')
+      }
+    }
     orphanedItemStrategy {
       discardOldItems {
         daysToKeep(7)
@@ -45,42 +50,13 @@ folder('platform') {
 }
 
 pipelineJob('platform/terraform-management-plan') {
-  description('Auto: GitHub pull_request (opened/synchronize). Plans terraform/** only. Sets check terraform-plan. No apply.')
+  description('Polls GitHub for open PRs to main (Jenkins is private; no webhook). Plans terraform/**. Sets check terraform-plan. No apply.')
   parameters {
-    stringParam('GIT_REF', 'origin/main', 'Manual fallback if webhook did not set GIT_SHA')
-    stringParam('GH_PR_NUMBER', '', 'Manual PR number')
+    stringParam('GIT_REF', 'origin/main', 'Manual fallback SHA/ref if the poll did not pick a PR')
+    stringParam('GH_PR_NUMBER', '', 'Manual PR number. Empty = newest open PR targeting main.')
   }
   triggers {
-    genericTrigger {
-      genericVariables {
-        genericVariable {
-          key('PR_ACTION')
-          value('$.action')
-          expressionType('JSONPath')
-        }
-        genericVariable {
-          key('PR_NUMBER')
-          value('$.pull_request.number')
-          expressionType('JSONPath')
-        }
-        genericVariable {
-          key('GIT_SHA')
-          value('$.pull_request.head.sha')
-          expressionType('JSONPath')
-        }
-        genericVariable {
-          key('PR_BASE')
-          value('$.pull_request.base.ref')
-          expressionType('JSONPath')
-        }
-      }
-      token(System.getenv('TF_PLAN_WEBHOOK_TOKEN') ?: 'unset')
-      causeString('GitHub PR $PR_NUMBER $PR_ACTION')
-      printContributedVariables(true)
-      printPostContent(false)
-      regexpFilterText('$PR_ACTION $PR_BASE')
-      regexpFilterExpression('^(opened|synchronize|reopened|ready_for_review) main$')
-    }
+    cron('H/2 * * * *')
   }
   definition {
     cpsScm {
@@ -103,39 +79,15 @@ pipelineJob('platform/terraform-management-plan') {
 }
 
 pipelineJob('platform/terraform-management-apply') {
-  description('Auto: GitHub push to main when terraform/** changed. Manual destroy-target still allowed.')
+  description('SCM poll of main. Applies when terraform/** changed. Manual destroy-target still allowed.')
   parameters {
-    choiceParam('ACTION', ['apply', 'destroy-target'], 'Webhook merge uses apply. destroy-target needs TARGET.')
+    choiceParam('ACTION', ['apply', 'destroy-target'], 'Poll/merge uses apply. destroy-target is manual only.')
     stringParam('TARGET', '', 'Unused. destroy-target is retired.')
     booleanParam('SKIP_PR_COMPARE', false, 'Emergency only. Default compares PR plan summary.')
     stringParam('PR_PLAN_SUMMARY', '', 'Override; else read PR comment marker')
   }
   triggers {
-    genericTrigger {
-      genericVariables {
-        genericVariable {
-          key('PUSH_REF')
-          value('$.ref')
-          expressionType('JSONPath')
-        }
-        genericVariable {
-          key('PUSH_DELETED')
-          value('$.deleted')
-          expressionType('JSONPath')
-        }
-        genericVariable {
-          key('PUSH_AFTER')
-          value('$.after')
-          expressionType('JSONPath')
-        }
-      }
-      token(System.getenv('TF_APPLY_WEBHOOK_TOKEN') ?: 'unset')
-      causeString('GitHub push $PUSH_REF')
-      printContributedVariables(true)
-      printPostContent(false)
-      regexpFilterText('$PUSH_REF $PUSH_DELETED')
-      regexpFilterExpression('^refs/heads/main false$')
-    }
+    scm('H/2 * * * *')
   }
   definition {
     cpsScm {

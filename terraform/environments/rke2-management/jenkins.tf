@@ -1,5 +1,5 @@
-# Jenkins stays a VM in the management VPC (docker.sock). It is not a pod on
-# RKE2: the cluster runs containerd, and the existing pipeline does `docker build`.
+# Jenkins is a private VM (docker.sock). Not a pod: RKE2 runs containerd.
+# UI and SSH only from the management VPC and the OpenVPN pool.
 # IAM name is prefixed rke2- so it does not clash with leftover IAM names.
 
 data "aws_iam_policy_document" "jenkins_assume" {
@@ -53,17 +53,19 @@ resource "aws_iam_instance_profile" "jenkins" {
 module "jenkins" {
   source = "../../modules/ubuntu-host"
 
-  name                 = "rke2-jenkins"
-  project_name         = var.project_name
-  instance_type        = var.jenkins_instance_type
-  ami_arch             = "amd64"
-  use_spot             = false
-  subnet_id            = module.network.public_subnet_ids[0]
-  vpc_id               = module.network.vpc_id
-  iam_instance_profile = aws_iam_instance_profile.jenkins.name
-  key_name             = module.keys.key_name
-  ingress_cidr         = "0.0.0.0/0"
-  allowed_tcp_ports    = [8080]
-  root_volume_size     = 30
-  user_data            = file("${path.module}/cloud-init-jenkins.sh")
+  name                        = "rke2-jenkins"
+  project_name                = var.project_name
+  instance_type               = var.jenkins_instance_type
+  ami_arch                    = "amd64"
+  use_spot                    = false
+  subnet_id                   = module.network.private_subnet_ids[0]
+  vpc_id                      = module.network.vpc_id
+  iam_instance_profile        = aws_iam_instance_profile.jenkins.name
+  key_name                    = module.keys.key_name
+  associate_public_ip_address = false
+  allocate_eip                = false
+  ingress_cidrs               = [var.vpc_cidr, "10.8.0.0/24"]
+  allowed_tcp_ports           = [22, 8080]
+  root_volume_size            = 30
+  user_data                   = file("${path.module}/cloud-init-jenkins.sh")
 }

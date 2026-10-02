@@ -57,10 +57,6 @@ jenkins:
             value: "${TF_STATE_BUCKET}"
           - key: "TF_ADMIN_INGRESS_CIDR"
             value: "${TF_ADMIN_INGRESS_CIDR}"
-          - key: "TF_PLAN_WEBHOOK_TOKEN"
-            value: "${TF_PLAN_WEBHOOK_TOKEN}"
-          - key: "TF_APPLY_WEBHOOK_TOKEN"
-            value: "${TF_APPLY_WEBHOOK_TOKEN}"
           - key: "AWS_DEFAULT_REGION"
             value: "${AWS_DEFAULT_REGION:-ap-southeast-2}"
 

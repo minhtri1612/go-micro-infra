@@ -28,6 +28,9 @@ disable:
 tls-san:
   - "${api_dns_name}"
   - "$PRIVATE_IP"
+# Server is control-plane only. Workloads (Argo CD, Traefik, apps) land on agents.
+node-taint:
+  - "node-role.kubernetes.io/control-plane:NoSchedule"
 EOT
 
 curl -sfL https://get.rke2.io | INSTALL_RKE2_TYPE=server INSTALL_RKE2_VERSION="${rke2_version}" sh -
