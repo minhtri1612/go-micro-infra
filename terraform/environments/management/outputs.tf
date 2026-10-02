@@ -2,50 +2,6 @@ output "admin_ingress_cidr" {
   value = local.admin_ingress_cidr
 }
 
-output "kind_instance_id" {
-  value = module.kind_host.instance_id
-}
-
-output "kind_public_ip" {
-  value = module.kind_host.public_ip
-}
-
-output "kind_ssm_command" {
-  value = "aws ssm start-session --target ${module.kind_host.instance_id} --region ${var.aws_region}"
-}
-
-output "argo_url" {
-  description = "Argo CD UI (Kind extraPortMappings 18080 → 30443)."
-  value       = "https://${module.kind_host.public_ip}:18080"
-}
-
-output "grafana_url" {
-  description = "Grafana UI (NodePort 32000). Existing Kind cluster needs kind/host-nodeport-proxy.sh on the EC2 host."
-  value       = "http://${module.kind_host.public_ip}:32000"
-}
-
-output "prometheus_url" {
-  description = "Management Prometheus (NodePort 32090)."
-  value       = "http://${module.kind_host.public_ip}:32090"
-}
-
-output "jenkins_instance_id" {
-  value = module.jenkins_host.instance_id
-}
-
-output "jenkins_public_ip" {
-  value = module.jenkins_host.public_ip
-}
-
-output "jenkins_ssm_command" {
-  value = "aws ssm start-session --target ${module.jenkins_host.instance_id} --region ${var.aws_region}"
-}
-
-output "jenkins_runtime_secret_name" {
-  description = "AWS Secrets Manager name. Seed JSON (see jenkins/secrets.example.json). Not in git."
-  value       = aws_secretsmanager_secret.jenkins_runtime.name
-}
-
 output "app_credentials_secret_names" {
   description = "AWS Secrets Manager names ESO remoteRef.key (go-micro/{env}/app-credentials)."
   value       = { for env, m in module.app_credentials : env => m.app_credentials_secret_name }

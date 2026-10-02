@@ -1,6 +1,6 @@
 variable "name" {
   type        = string
-  description = "Name tag suffix, e.g. kind-host or jenkins-host."
+  description = "Name tag suffix, e.g. rke2-jenkins."
 }
 
 variable "project_name" {
@@ -65,4 +65,10 @@ variable "user_data" {
 variable "allocate_eip" {
   type    = bool
   default = true
+}
+
+variable "key_name" {
+  description = "Optional EC2 key pair (SSH). Null = SSM-only host."
+  type        = string
+  default     = null
 }

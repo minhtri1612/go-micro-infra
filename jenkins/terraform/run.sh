@@ -2,15 +2,22 @@
 # DevOps-owned Terraform runner for Jenkins. Not go-micro-ci.
 set -euo pipefail
 
-CHDIR="terraform/environments/management"
 ACTION="${1:?usage: run.sh plan|apply|destroy-target}"
+STACK="${TF_STACK:-rke2-management}"
+
+case "${STACK}" in
+  rke2-management | rke2-dev | rke2-prod | networking) ;;
+  *)
+    echo "TF_STACK allowlist: rke2-management rke2-dev rke2-prod networking" >&2
+    exit 1
+    ;;
+esac
+
+CHDIR="terraform/environments/${STACK}"
 
 : "${TF_STATE_BUCKET:?set TF_STATE_BUCKET}"
 : "${AWS_ACCESS_KEY_ID:?}"
 : "${AWS_SECRET_ACCESS_KEY:?}"
-: "${TF_VAR_db_password:?}"
-: "${TF_VAR_stripe_secret_key:?}"
-: "${TF_VAR_admin_ingress_cidr:?}"
 
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-southeast-2}"
 export TF_IN_AUTOMATION=1
@@ -19,7 +26,7 @@ export TF_INPUT=0
 write_backend() {
   cat >"${CHDIR}/backend.hcl" <<EOF
 bucket       = "${TF_STATE_BUCKET}"
-key          = "management/terraform.tfstate"
+key          = "${STACK}/terraform.tfstate"
 region       = "${AWS_DEFAULT_REGION}"
 encrypt      = true
 use_lockfile = true
@@ -69,19 +76,8 @@ case "${ACTION}" in
     tf apply -input=false -no-color tfplan
     ;;
   destroy-target)
-    TARGET="${2:?destroy-target needs module address}"
-    case "${TARGET}" in
-      module.kind_host) ;;
-      *)
-        echo "destroy-target allowlist: module.kind_host only (not jenkins/vpc)" >&2
-        exit 1
-        ;;
-    esac
-    if [[ "${TARGET}" == *jenkins* ]]; then
-      echo "refusing TARGET that mentions jenkins" >&2
-      exit 1
-    fi
-    tf destroy -input=false -no-color -auto-approve -target="${TARGET}"
+    echo "destroy-target is retired. Destroy a stack from the laptop: terraform -chdir=terraform/environments/\$TF_STACK destroy" >&2
+    exit 1
     ;;
   *)
     echo "unknown action ${ACTION}" >&2

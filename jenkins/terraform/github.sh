@@ -39,9 +39,10 @@ case "${cmd}" in
     ;;
   comment-plan)
     pr="${1:?pr number}"
-    summary="$(cat terraform/environments/management/plan-summary.txt)"
-    jq -n --arg summary "${summary}" --arg url "${BUILD_URL:-}" '{
-      body: ("terraform plan (management)\n\n`" + $summary + "`\n\nBuild: " + $url + "\n\n<!-- tf-plan-summary:" + $summary + " -->")
+    stack="${TF_STACK:-rke2-management}"
+    summary="$(cat terraform/environments/${stack}/plan-summary.txt)"
+    jq -n --arg summary "${summary}" --arg stack "${stack}" --arg url "${BUILD_URL:-}" '{
+      body: ("terraform plan (" + $stack + ")\n\n`" + $summary + "`\n\nBuild: " + $url + "\n\n<!-- tf-plan-summary:" + $summary + " -->")
     }' | github_f -X POST --data-binary @- "${API}/repos/${REPO}/issues/${pr}/comments" >/dev/null
     ;;
   pr-summary)

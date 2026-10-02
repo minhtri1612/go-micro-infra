@@ -1,0 +1,37 @@
+# Copy to users.yml (gitignored). This file is the single source of truth for
+# who gets a .ovpn, which VPN IP they hold, and which SSH key lands on the nodes.
+vpn_users:
+  - name: "devops"
+    ip: "10.8.0.51"
+    role: "devops"
+    ssh_public_key: "ssh-ed25519 AAAA... devops@laptop"
+  - name: "developer"
+    ip: "10.8.0.50"
+    role: "developer"
+    ssh_public_key: "ssh-ed25519 AAAA... developer@laptop"
+
+vpn_policy:
+  cipher: "AES-256-GCM"
+  auth: "SHA256"
+  keepalive: "10 120"
+  redirect_gateway: false
+  verb: "3"
+
+# SNAT at the VPN host so replies from dev/prod come back through the peering
+# instead of needing a 10.8.0.0/24 route in every VPC.
+vpn_nat: true
+
+# Routes pushed to clients: management, dev, prod.
+vpn_target:
+  - { cidr: "10.0.0.0", mask: "255.255.0.0" }
+  - { cidr: "10.1.0.0", mask: "255.255.0.0" }
+  - { cidr: "10.2.0.0", mask: "255.255.0.0" }
+
+# Network-level dest/prod split enforced on the VPN gateway.
+network_ranges:
+  management: "10.0.0.0/16"
+  dev: "10.1.0.0/16"
+  prod: "10.2.0.0/16"
+
+vpn_admin_ip: "10.8.0.51"
+vpn_developer_ip: "10.8.0.50"

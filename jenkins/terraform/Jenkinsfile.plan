@@ -92,7 +92,7 @@ pipeline {
       }
     }
     always {
-      archiveArtifacts artifacts: 'terraform/environments/management/plan-summary.txt,terraform/environments/management/plan.txt', allowEmptyArchive: true, fingerprint: true
+      archiveArtifacts artifacts: 'terraform/environments/*/plan-summary.txt,terraform/environments/*/plan.txt', allowEmptyArchive: true, fingerprint: true
     }
   }
 }

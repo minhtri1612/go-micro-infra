@@ -106,7 +106,7 @@ pipelineJob('platform/terraform-management-apply') {
   description('Auto: GitHub push to main when terraform/** changed. Manual destroy-target still allowed.')
   parameters {
     choiceParam('ACTION', ['apply', 'destroy-target'], 'Webhook merge uses apply. destroy-target needs TARGET.')
-    stringParam('TARGET', '', 'module.kind_host when ACTION=destroy-target')
+    stringParam('TARGET', '', 'Unused. destroy-target is retired.')
     booleanParam('SKIP_PR_COMPARE', false, 'Emergency only. Default compares PR plan summary.')
     stringParam('PR_PLAN_SUMMARY', '', 'Override; else read PR comment marker')
   }

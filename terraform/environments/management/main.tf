@@ -1,57 +1,11 @@
+# RETIRED Kind lab (VPC 10.50). AWS resources were destroyed 2026-09-30.
+# Do not apply this root — it would recreate that VPC. Clusters live in rke2-*.
+
 module "vpc" {
   source             = "../../modules/vpc"
   project_name       = var.project_name
   vpc_cidr           = var.vpc_cidr
   public_subnet_cidr = var.public_subnet_cidr
-}
-
-module "ec2_ssm" {
-  source       = "../../modules/ec2-ssm"
-  project_name = var.project_name
-}
-
-module "kind_host" {
-  source = "../../modules/ubuntu-host"
-
-  name                 = "kind-host"
-  project_name         = var.project_name
-  instance_type        = var.kind_instance_type
-  ami_id               = var.kind_ami_id
-  ami_arch             = "amd64"
-  use_spot             = true
-  subnet_id            = module.vpc.public_subnet_id
-  vpc_id               = module.vpc.vpc_id
-  iam_instance_profile = module.ec2_ssm.instance_profile_name
-  ingress_cidr         = local.admin_ingress_cidr
-  allowed_tcp_ports    = [18080, 32000, 32090]
-  root_volume_size     = var.kind_root_volume_size
-  # Snapshot already has Docker/Kind. Empty user_data so cloud-init does not
-  # reinstall Docker on the new instance-id and risk the clusters.
-  user_data = ""
-}
-
-# Jenkins lives on this EC2. First apply is local (Jenkins does not exist yet).
-# Later Jenkins jobs apply THIS same stack — do not replace/destroy this instance
-# or close SG :8080 without a local-apply fallback (see terraform/README.md).
-# :8080 must be world-open so GitHub Cloud webhooks can hit generic-webhook-trigger
-# (admin_ingress_cidr is only the laptop; GitHub IPs are not that /32).
-# On-demand: t4g.small Spot in ap-southeast-2a was reclaimed (stop) repeatedly.
-module "jenkins_host" {
-  source = "../../modules/ubuntu-host"
-
-  name                 = "jenkins-host"
-  project_name         = var.project_name
-  instance_type        = var.jenkins_instance_type
-  ami_id               = var.jenkins_ami_id
-  ami_arch             = "arm64"
-  use_spot             = var.jenkins_use_spot
-  subnet_id            = module.vpc.public_subnet_id
-  vpc_id               = module.vpc.vpc_id
-  iam_instance_profile = module.jenkins_iam.instance_profile_name
-  ingress_cidr         = "0.0.0.0/0"
-  allowed_tcp_ports    = [8080]
-  root_volume_size     = var.jenkins_root_volume_size
-  user_data            = file("${path.module}/cloud-init-jenkins.sh")
 }
 
 module "app_credentials" {

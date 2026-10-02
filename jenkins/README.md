@@ -1,6 +1,6 @@
 # Jenkins CI (ngoài cluster)
 
-Jenkins **không** chạy trong Kind, không do Helm/Argo quản. Đây là server CI dựng đầu tiên (`docker compose`) trên EC2/VPS riêng.
+Jenkins **không** chạy trong RKE2, không do Helm/Argo quản. Đây là server CI (`docker compose`) trên EC2 trong VPC management.
 
 ## Vận hành
 
@@ -9,7 +9,7 @@ Dev  →  git push service repo
           Jenkins job  services/<name>
             1. docker build/push
             2. bump go-micro-gitops/env/dev.yaml
-          Argo CD (máy Kind)  →  cluster
+          Argo CD (RKE2 management)  →  dest/prod cluster
 ```
 
 Dev không SSH Jenkins trừ khi xem log job của mình. Secret **không** nằm Git, **không** nằm `.env` committed.
@@ -18,16 +18,16 @@ Dev không SSH Jenkins trừ khi xem log job của mình. Secret **không** nằ
 
 Nguồn sự thật: **AWS Secrets Manager** `go-micro/jenkins/runtime` (Terraform tạo secret rỗng; JSON seed trên console, không vào tfstate).
 
-Máy Jenkins có IAM role riêng (`go-micro-jenkins-ec2`): đọc **đúng** secret đó + SSM sang Kind. Role Kind (`go-micro-ec2-ssm`) **không** đọc secret Jenkins.
+Máy Jenkins có IAM role riêng (`go-micro-rke2-jenkins`): đọc **đúng** secret đó. kubectl đi kubeconfig (peering), không SSM sang cluster.
 
 User login: **GitHub OAuth**. Jenkins không lưu password. SM chỉ giữ **OAuth App** `GITHUB_OAUTH_CLIENT_ID` / `CLIENT_SECRET` + PAT/Docker/AWS job keys.
 
 GitHub → Settings → Developer settings → OAuth Apps → New:
 
-- Homepage: `http://32.237.61.14:8080/`
-- Authorization callback: `http://32.237.61.14:8080/securityRealm/finishLogin`
+- Homepage: `http://<jenkins-eip>:8080/`
+- Authorization callback: `http://<jenkins-eip>:8080/securityRealm/finishLogin`
 
-`JENKINS_ADMIN_ID` / `JENKINS_DEVELOPER_ID` trong secret = **hai GitHub username khác nhau** (Role Strategy `entries.user`). `dest` là tên môi trường Kind (dev yaml), không phải role Jenkins. Tạo OAuth App + ghi 2 key vào SM **trước** khi `compose up` (sai callback = lockout).
+`JENKINS_ADMIN_ID` / `JENKINS_DEVELOPER_ID` trong secret = **hai GitHub username khác nhau** (Role Strategy `entries.user`). `dest` là môi trường (`env/dev.yaml`), không phải role Jenkins. Tạo OAuth App + ghi 2 key vào SM **trước** khi `compose up` (sai callback = lockout).
 
 ```bash
 cd ~/go-micro-infra/jenkins
@@ -58,6 +58,8 @@ Không `ciTerraform`. Job DSL folder `platform/`. Jenkinsfile **luôn từ `main
 2. Merge `main` → GitHub `push` → job **apply** (re-plan, so sánh `<!-- tf-plan-summary -->`, `apply tfplan`).
 3. CODEOWNERS ghi owner; lab 1 DevOps **không** bật required reviews.
 
+`TF_STACK` mặc định `rke2-management` (allowlist: `rke2-management` `rke2-dev` `rke2-prod` `networking`).
+
 ### Trên EC2 Jenkins
 
 Webhook tokens và AWS plan/apply keys nằm trong secret `go-micro/jenkins/runtime`.
@@ -83,9 +85,8 @@ Terraform:
 
 - Plan tay: `GIT_REF` + `GH_PR_NUMBER`
 - Apply tay: ACTION=`apply`, `SKIP_PR_COMPARE=true` chỉ khi không có PR plan
-- Destroy Kind: ACTION=`destroy-target`, TARGET=`module.kind_host`
 
-Laptop không apply management trừ khi Jenkins chết.
+Laptop không apply `rke2-*` trừ khi Jenkins chết.
 
 ## Trách nhiệm
 

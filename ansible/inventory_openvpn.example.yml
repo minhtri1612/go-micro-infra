@@ -1,0 +1,15 @@
+# Copy to inventory_openvpn.yml and fill the EIP:
+#   terraform -chdir=../terraform/environments/rke2-management output -raw openvpn_public_ip
+#
+# Run:
+#   ansible-playbook -i inventory_openvpn.yml openvpn-server.yml \
+#     -e openvpn_public_ip=<SAME_IP>
+#
+# This host is the only one reachable from the internet, and only from
+# admin_ssh_cidr. Everything private is reached by jumping through it.
+vpn_server:
+  hosts:
+    openvpn:
+      ansible_host: REPLACE_WITH_OPENVPN_PUBLIC_IP
+      ansible_user: ubuntu
+      ansible_ssh_private_key_file: ../terraform/environments/rke2-management/rke2-key-management.pem
