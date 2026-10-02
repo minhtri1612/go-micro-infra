@@ -5,6 +5,7 @@ USER root
 
 ARG TF_VERSION=1.16.4
 ARG BUILDX_VERSION=0.23.0
+ARG KUBECTL_VERSION=1.28.15
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends curl ca-certificates git unzip jq awscli \
@@ -20,6 +21,11 @@ RUN apt-get update \
   && curl -fsSL "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_${tfarch}.zip" -o /tmp/tf.zip \
   && unzip -o /tmp/tf.zip -d /usr/local/bin \
   && chmod +x /usr/local/bin/terraform \
+  && curl -fsSL "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/${tfarch}/kubectl" -o /usr/local/bin/kubectl \
+  && chmod +x /usr/local/bin/kubectl \
+  && curl -fsSL "https://github.com/argoproj/argo-rollouts/releases/download/v1.7.2/kubectl-argo-rollouts-linux-${tfarch}" \
+       -o /usr/local/bin/kubectl-argo-rollouts \
+  && chmod +x /usr/local/bin/kubectl-argo-rollouts \
   && rm -rf /tmp/docker.tgz /tmp/docker /tmp/tf.zip \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*

@@ -3,12 +3,12 @@
 set -euo pipefail
 
 ACTION="${1:?usage: run.sh plan|apply|destroy-target}"
-STACK="${TF_STACK:-management}"
+STACK="${TF_STACK:-rke2-management}"
 
 case "${STACK}" in
-  management | rke2-management | rke2-dev | rke2-prod | networking) ;;
+  rke2-management | rke2-dev | rke2-prod | networking) ;;
   *)
-    echo "TF_STACK allowlist: management rke2-management rke2-dev rke2-prod networking" >&2
+    echo "TF_STACK allowlist: rke2-management rke2-dev rke2-prod networking" >&2
     exit 1
     ;;
 esac
@@ -18,14 +18,6 @@ CHDIR="terraform/environments/${STACK}"
 : "${TF_STATE_BUCKET:?set TF_STATE_BUCKET}"
 : "${AWS_ACCESS_KEY_ID:?}"
 : "${AWS_SECRET_ACCESS_KEY:?}"
-
-# Only the Kind/Jenkins stack takes app secrets; the RKE2 stacks generate their
-# own credentials in Secrets Manager.
-if [[ "${STACK}" == "management" ]]; then
-  : "${TF_VAR_db_password:?}"
-  : "${TF_VAR_stripe_secret_key:?}"
-  : "${TF_VAR_admin_ingress_cidr:?}"
-fi
 
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-southeast-2}"
 export TF_IN_AUTOMATION=1
@@ -84,19 +76,8 @@ case "${ACTION}" in
     tf apply -input=false -no-color tfplan
     ;;
   destroy-target)
-    TARGET="${2:?destroy-target needs module address}"
-    case "${TARGET}" in
-      module.kind_host) ;;
-      *)
-        echo "destroy-target allowlist: module.kind_host only (not jenkins/vpc)" >&2
-        exit 1
-        ;;
-    esac
-    if [[ "${TARGET}" == *jenkins* ]]; then
-      echo "refusing TARGET that mentions jenkins" >&2
-      exit 1
-    fi
-    tf destroy -input=false -no-color -auto-approve -target="${TARGET}"
+    echo "destroy-target is retired. Destroy a stack from the laptop: terraform -chdir=terraform/environments/\$TF_STACK destroy" >&2
+    exit 1
     ;;
   *)
     echo "unknown action ${ACTION}" >&2

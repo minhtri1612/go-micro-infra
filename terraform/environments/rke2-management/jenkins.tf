@@ -1,6 +1,6 @@
 # Jenkins stays a VM in the management VPC (docker.sock). It is not a pod on
 # RKE2: the cluster runs containerd, and the existing pipeline does `docker build`.
-# IAM name is prefixed rke2- so it does not clash with the Kind-era jenkins-ec2 role.
+# IAM name is prefixed rke2- so it does not clash with leftover IAM names.
 
 data "aws_iam_policy_document" "jenkins_assume" {
   statement {
@@ -12,7 +12,7 @@ data "aws_iam_policy_document" "jenkins_assume" {
   }
 }
 
-# Old Kind stack owned this secret; it was destroyed with environments/management.
+# Recreated here after environments/management was destroyed.
 resource "aws_secretsmanager_secret" "jenkins_runtime" {
   name                    = var.jenkins_runtime_secret_name
   description             = "Jenkins compose/CasC runtime. Seed JSON in the AWS console."

@@ -142,7 +142,7 @@ Khong bat buoc neu rollout da co `synthetic-load`, nhung van huu ich de debug nh
 
 ### wget trong pod (DEV)
 ```bash
-kubectl --context kind-dev -n microservices-dev exec $(kubectl --context kind-dev -n microservices-dev get pod -l app.kubernetes.io/name=product -o name | head -n 1) -- \
+kubectl -n microservices-dev exec $(kubectl -n microservices-dev get pod -l app.kubernetes.io/name=product -o name | head -n 1) -- \
 sh -c "seq 500 | xargs -I{} -P 20 wget -qO- http://localhost:8080/health"
 ```
 

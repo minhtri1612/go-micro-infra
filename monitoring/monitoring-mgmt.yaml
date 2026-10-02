@@ -20,7 +20,7 @@ grafana:
 
 prometheus:
   enabled: true
-  # Expose for cross-cluster Rollouts analysis; IP in config/env/*.yaml = mgmt control-plane on kind network.
+  # Expose for cross-cluster Rollouts analysis; dest/prod agents remote_write here.
   service:
     type: NodePort
     nodePort: 32090

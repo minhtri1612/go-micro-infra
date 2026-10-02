@@ -2,7 +2,6 @@
 # Đồng bộ remote_write URL (Prometheus Agent workload → Prometheus management) — không hardcode IP trong Git.
 #
 # Cách dùng:
-#   ./scripts/sync-monitoring-remote-write-url.sh              # đọc IP từ Docker
 #   MGMT_PROMETHEUS_REMOTE_WRITE_URL='http://x:32090/api/v1/write' ./scripts/sync-monitoring-remote-write-url.sh
 #   ./scripts/sync-monitoring-remote-write-url.sh --print-only # chỉ in URL write
 #   ./scripts/sync-monitoring-remote-write-url.sh --print-ready-url
@@ -11,17 +10,14 @@
 #   ./scripts/sync-monitoring-remote-write-url.sh --help
 #
 # Biến môi trường:
-#   MGMT_PROMETHEUS_REMOTE_WRITE_URL  — bỏ qua Docker, set URL đầy đủ
-#   MGMT_CONTROL_PLANE_CONTAINER        — mặc định: management-control-plane
-#   MGMT_PROMETHEUS_NODEPORT            — mặc định: 32090
+#   MGMT_PROMETHEUS_REMOTE_WRITE_URL  — bắt buộc. ClusterIP/NLB management Prometheus
+#   MGMT_PROMETHEUS_NODEPORT            — mặc định: 32090 (chỉ dùng nếu URL thiếu port)
 #   MONITORING_WORKLOAD_VALUES          — mặc định: monitoring/monitoring-workload.yaml (đường dẫn tương đối repo)
 #
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET="${ROOT}/${MONITORING_WORKLOAD_VALUES:-monitoring/monitoring-workload.yaml}"
-CONTAINER_NAME="${MGMT_CONTROL_PLANE_CONTAINER:-management-control-plane}"
-NODEPORT="${MGMT_PROMETHEUS_NODEPORT:-32090}"
 CHECK_RETRIES="${MGMT_READY_CHECK_RETRIES:-12}"
 CHECK_SLEEP_SECONDS="${MGMT_READY_CHECK_SLEEP_SECONDS:-5}"
 
@@ -42,25 +38,11 @@ usage() {
 }
 
 resolve_url() {
-  if [[ -n "${MGMT_PROMETHEUS_REMOTE_WRITE_URL:-}" ]]; then
-    echo "${MGMT_PROMETHEUS_REMOTE_WRITE_URL}"
-    return 0
-  fi
-  if ! docker inspect "$CONTAINER_NAME" &>/dev/null; then
-    echo "Không tìm thấy container Docker '$CONTAINER_NAME'." >&2
-    echo "Đặt MGMT_PROMETHEUS_REMOTE_WRITE_URL hoặc MGMT_CONTROL_PLANE_CONTAINER." >&2
+  if [[ -z "${MGMT_PROMETHEUS_REMOTE_WRITE_URL:-}" ]]; then
+    echo "Set MGMT_PROMETHEUS_REMOTE_WRITE_URL (management Prometheus, e.g. http://<ip>:32090/api/v1/write)." >&2
     exit 1
   fi
-  # Nhiều network: lấy IP đầu tiên
-  local raw
-  raw="$(docker inspect "$CONTAINER_NAME" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}')"
-  local ip
-  ip="$(echo "$raw" | awk '{print $1}')"
-  if [[ -z "$ip" ]]; then
-    echo "Không đọc được IP của $CONTAINER_NAME" >&2
-    exit 1
-  fi
-  echo "http://${ip}:${NODEPORT}/api/v1/write"
+  echo "${MGMT_PROMETHEUS_REMOTE_WRITE_URL}"
 }
 
 write_ready_url() {
@@ -83,7 +65,7 @@ git_commit_push_values() {
   if git diff --cached --quiet; then
     echo "Git: không có thay đổi để commit (URL đã trùng hoặc file không đổi)."
   else
-    git commit -m "chore(monitoring): sync remote_write URL for Kind"
+    git commit -m "chore(monitoring): sync remote_write URL"
   fi
   git push
   echo "Git: đã push (hoặc remote đã up to date)."
@@ -126,8 +108,8 @@ if $CHECK; then
   echo "Prometheus management chưa sẵn sàng sau $CHECK_RETRIES lần thử." >&2
   if command -v kubectl &>/dev/null; then
     echo "Gợi ý chẩn đoán:" >&2
-    echo "  kubectl --context kind-management -n monitoring get pods" >&2
-    echo "  kubectl --context kind-management -n monitoring get svc monitoring-management-kube-prometheus -o wide" >&2
+    echo "  kubectl -n monitoring get pods" >&2
+    echo "  kubectl -n monitoring get svc monitoring-management-kube-prometheus -o wide" >&2
   fi
   exit 1
 fi

@@ -1,6 +1,6 @@
 variable "name" {
   type        = string
-  description = "Name tag suffix, e.g. kind-host or jenkins-host."
+  description = "Name tag suffix, e.g. rke2-jenkins."
 }
 
 variable "project_name" {

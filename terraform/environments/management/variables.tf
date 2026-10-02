@@ -16,7 +16,7 @@ variable "stack" {
 variable "admin_ingress_cidr" {
   type        = string
   default     = null
-  description = "CIDR allowed to reach Jenkins :8080, Argo :18080, Grafana :32000, Prometheus :32090. Null = your public IP at apply time. Shell access is SSM, not SSH."
+  description = "Unused after Kind lab teardown. Kept so leftover tfvars still init."
 }
 
 variable "vpc_cidr" {
@@ -29,48 +29,9 @@ variable "public_subnet_cidr" {
   default = "10.50.1.0/24"
 }
 
-variable "kind_instance_type" {
-  type    = string
-  default = "t3.xlarge"
-}
-
-variable "kind_ami_id" {
-  type        = string
-  default     = "ami-0431580b981f6110a"
-  description = "Snapshot of the running Kind host (Argo/Kind on disk). Spot resize launches a new instance from this AMI. Do not use latest Ubuntu or Kind is wiped."
-}
-
-variable "jenkins_ami_id" {
-  type        = string
-  default     = "ami-0004fb89ca77c5bfb"
-  description = "Pin the running Jenkins AMI (rescue image of the host after Spot interruption). Wrong AMI = replace = wipe Jenkins disk."
-}
-
-variable "jenkins_use_spot" {
-  type        = bool
-  default     = false
-  description = "false = On-Demand. t4g.small Spot in ap-southeast-2a was stopped by AWS when capacity disappeared."
-}
-
-variable "kind_root_volume_size" {
-  type    = number
-  default = 40
-}
-
-variable "jenkins_instance_type" {
-  type    = string
-  default = "t4g.small"
-}
-
-variable "jenkins_root_volume_size" {
-  type    = number
-  default = 20
-}
-
 variable "environments" {
-  type        = set(string)
-  default     = ["dev", "prod"]
-  description = "Secrets Manager envs. Kind lab uses dev+prod; add staging in tfvars if needed."
+  type    = set(string)
+  default = ["dev", "prod"]
 }
 
 variable "db_user" {
@@ -79,15 +40,13 @@ variable "db_user" {
 }
 
 variable "db_password" {
-  type        = string
-  sensitive   = true
-  description = "No default. Set in terraform.tfvars."
+  type      = string
+  sensitive = true
 }
 
 variable "stripe_secret_key" {
-  type        = string
-  sensitive   = true
-  description = "Stripe sk_test_ or sk_live_. Set in terraform.tfvars."
+  type      = string
+  sensitive = true
 
   validation {
     condition     = can(regex("^sk_(test|live)_", var.stripe_secret_key))
@@ -106,7 +65,6 @@ variable "eso_iam_user_suffix" {
 }
 
 variable "secret_recovery_window_in_days" {
-  type        = number
-  default     = 7
-  description = "Passed to app-credentials. Use 0 only when you need immediate secret delete on destroy."
+  type    = number
+  default = 7
 }

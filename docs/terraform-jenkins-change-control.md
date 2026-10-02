@@ -1,6 +1,6 @@
 # Terraform + Jenkins: kiểm soát thay đổi (team ~10)
 
-Tổng hợp trao đổi với CODEX. **Không** biến lab Kind/EC2 thành AWS enterprise (HA, EKS, chi phí lớn). Cái cần đạt chuẩn production là **quy trình**: ai được sửa gì, PR/review trước khi chạy, Terraform apply chỉ trên Jenkins — không trên laptop.
+Tổng hợp trao đổi với CODEX. **Không** biến lab RKE2/EC2 thành AWS enterprise (HA, EKS, chi phí lớn). Cái cần đạt chuẩn production là **quy trình**: ai được sửa gì, PR/review trước khi chạy, Terraform apply chỉ trên Jenkins — không trên laptop.
 
 Kèm plan CI service/GitOps (repo `go-micro-gitops`): `docs/cicd-hardening-plan.md`. **Không** dùng Trivy/image scan trong phạm vi này.
 
@@ -78,7 +78,7 @@ Terraform hiện là **sườn lab tốt**, chưa production-IaC cho team. Vấn
 
 - Secret nằm trong Terraform state; `sensitive = true` chỉ che CLI. Backend IAM hẹp; cân nhắc KMS CMK thay AES256
 - `recovery_window_in_days` mặc định 7 (còn option `0` trong tfvars khi destroy lab gấp)
-- ESO IAM key tĩnh, đọc cả prefix `go-micro/*`, chưa rotation; lab Kind chấp nhận, nên tách principal dev/prod theo ARN exact
+- ESO IAM key tĩnh, đọc cả prefix `go-micro/*`, chưa rotation; lab chấp nhận, nên tách principal dev/prod theo ARN exact
 - AMI `most_recent` + `ignore_changes = [ami]`, `user_data_replace_on_change = false` — cloud-init/AMI mới không lên host cũ; cần runbook patch/rebuild
 - Provider pin `~> 5.0`; lockfile đã commit theo root; apply chỉ từ Jenkins + người DevOps
 

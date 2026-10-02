@@ -43,7 +43,7 @@ resource "aws_lb_listener" "api" {
   }
 }
 
-# Public NLB in front of the Traefik NodePorts (replaces the Kind host-nodeport-proxy).
+# Public NLB in front of the Traefik NodePorts 32080/32443.
 resource "aws_lb" "web" {
   name               = "${var.project_name}-web-${var.environment}"
   internal           = false

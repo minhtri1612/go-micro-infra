@@ -1,4 +1,4 @@
-# Jenkins CI server. Chạy trên EC2/VPS riêng — không phải Kind.
+# Jenkins CI server. EC2 in the RKE2 management VPC — not a cluster pod.
 # user root: docker.sock trên host (lab). Không phải mô hình Kubernetes agent.
 # Secrets: AWS Secrets Manager go-micro/jenkins/runtime → ./scripts/load-runtime-env.sh → .env.runtime
 services:

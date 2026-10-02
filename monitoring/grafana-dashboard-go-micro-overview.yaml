@@ -24,7 +24,7 @@ data:
           }
         ]
       },
-      "description": "Kind node CPU + service scrape/HTTP. Node CPU ignores serviceRegex. HTTP panels fill after /health or /api traffic.",
+      "description": "Node CPU + service scrape/HTTP. Node CPU ignores serviceRegex. HTTP panels fill after /health or /api traffic.",
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 1,
@@ -40,7 +40,7 @@ data:
             "y": 0
           },
           "id": 20,
-          "title": "Kind nodes CPU",
+          "title": "Nodes CPU",
           "type": "row",
           "panels": []
         },
