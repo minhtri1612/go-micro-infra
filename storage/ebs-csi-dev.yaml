@@ -1,4 +1,4 @@
-# EBS CSI on dest/prod. Controller uses the node instance role
+# EBS CSI on dev/prod. Controller uses the node instance role
 # (AmazonEBSCSIDriverPolicy + IMDSv2 hop_limit 2). No IRSA.
 controller:
   hostNetwork: true

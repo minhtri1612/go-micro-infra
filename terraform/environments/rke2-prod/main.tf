@@ -76,3 +76,16 @@ module "eso_iam" {
   project_name        = var.project_name
   eso_iam_user_suffix = "rke2-${var.environment}"
 }
+
+# Kind management used to own these secrets. ESO still reads
+# go-micro/prod/app-credentials — recreate them here, not via environments/management.
+module "app_credentials" {
+  source = "../../modules/app-credentials"
+
+  project_name            = var.project_name
+  environment             = var.environment
+  db_user                 = var.db_user
+  db_password             = var.db_password
+  stripe_secret_key       = var.stripe_secret_key
+  recovery_window_in_days = 0
+}

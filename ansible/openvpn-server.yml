@@ -228,7 +228,7 @@
       when: vpn_nat | default(false) | bool
       changed_when: false
 
-    # Network-level dest/prod isolation, matching the Jenkins and Argo CD split:
+    # Network-level dev/prod isolation, matching the Jenkins and Argo CD split:
     # the developer profile can reach dev but is dropped towards prod.
     - name: Per-user firewall (admin full, developer dev-only)
       ansible.builtin.shell: |

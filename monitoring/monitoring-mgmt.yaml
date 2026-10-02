@@ -20,7 +20,7 @@ grafana:
 
 prometheus:
   enabled: true
-  # Expose for cross-cluster Rollouts analysis; dest/prod agents remote_write here.
+  # Expose for cross-cluster Rollouts analysis; dev/prod agents remote_write here.
   service:
     type: NodePort
     nodePort: 32090

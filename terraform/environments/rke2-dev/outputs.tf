@@ -39,3 +39,8 @@ output "eso_secret_access_key" {
   value     = module.eso_iam.eso_secret_access_key
   sensitive = true
 }
+
+output "app_credentials_secret_name" {
+  description = "ESO remoteRef.key (go-micro/dev/app-credentials)"
+  value       = module.app_credentials.app_credentials_secret_name
+}

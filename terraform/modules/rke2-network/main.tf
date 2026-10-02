@@ -253,7 +253,7 @@ resource "aws_security_group" "node_common" {
 
 resource "aws_security_group" "web_nlb" {
   name        = "${var.project_name}-web-nlb-sg-${var.environment}"
-  description = "Web NLB (public Traefik on dest/prod, internal Argo on management)"
+  description = "Web NLB (public Traefik on dev/prod, internal Argo on management)"
   vpc_id      = aws_vpc.this.id
 
   ingress {

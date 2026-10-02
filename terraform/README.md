@@ -81,7 +81,7 @@ Bootstrap không đi qua Jenkins:
 terraform -chdir=terraform/bootstrap ...
 ```
 
-## RKE2 — 3 VPC peering (management / dest / prod)
+## RKE2 — 3 VPC peering (management / dev / prod)
 
 ```
 environments/rke2-management/   10.0.0.0/16   RKE2 + Argo CD + OpenVPN + Jenkins EC2
@@ -97,7 +97,7 @@ environments/networking/        peering: mgmt↔dev, mgmt↔prod
 Node nằm **private subnet, không public IP**. Máy duy nhất hở internet là **OpenVPN host** ở public subnet của management; nó cũng là **jump host SSH** cho mọi node.
 
 ```
-laptop --(.ovpn)--> OpenVPN host 10.0.1.x --peering--> dest 10.1.101.x / prod 10.2.101.x
+laptop --(.ovpn)--> OpenVPN host 10.0.1.x --peering--> dev 10.1.101.x / prod 10.2.101.x
                          ^ ProxyCommand cho ansible / ssh / export-kubeconfig
 ```
 
@@ -138,7 +138,7 @@ kubectl apply -f ../go-micro-gitops/argocd/bootstrap/01-projects.yaml
 kubectl apply -f ../go-micro-gitops/argocd/bootstrap/05-monitoring-mgmt.yaml
 ```
 
-`networking/` đọc VPC theo tag nên dest/prod là optional — apply được ngay sau management.
+`networking/` đọc VPC theo tag nên dev/prod là optional — apply được ngay sau management.
 
 ```bash
 export TF_STACK=rke2-management   # rồi rke2-dev, rke2-prod, networking

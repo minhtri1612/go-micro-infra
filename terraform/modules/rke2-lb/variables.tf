@@ -19,7 +19,7 @@ variable "private_subnet_ids" {
 }
 
 variable "internal_web" {
-  description = "true = Argo/Grafana NLB stays private (VPN). false = public Traefik NLB for dest/prod apps."
+  description = "true = Argo/Grafana NLB stays private (VPN). false = public Traefik NLB for dev/prod apps."
   type        = bool
   default     = false
 }

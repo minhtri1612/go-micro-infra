@@ -9,7 +9,7 @@ Dev  →  git push service repo
           Jenkins job  services/<name>
             1. docker build/push
             2. bump go-micro-gitops/env/dev.yaml
-          Argo CD (RKE2 management)  →  dest/prod cluster
+          Argo CD (RKE2 management)  →  dev/prod cluster
 ```
 
 Dev không SSH Jenkins trừ khi xem log job của mình. Secret **không** nằm Git, **không** nằm `.env` committed.
@@ -29,7 +29,7 @@ GitHub → Settings → Developer settings → OAuth Apps → New:
 
 Browser phải đang nối OpenVPN; GitHub chỉ redirect về URL đó.
 
-`JENKINS_ADMIN_ID` / `JENKINS_DEVELOPER_ID` trong secret = **hai GitHub username khác nhau** (Role Strategy `entries.user`). `dest` là môi trường (`env/dev.yaml`), không phải role Jenkins. Tạo OAuth App + ghi 2 key vào SM **trước** khi `compose up` (sai callback = lockout).
+`JENKINS_ADMIN_ID` / `JENKINS_DEVELOPER_ID` trong secret = **hai GitHub username khác nhau** (Role Strategy `entries.user`). Môi trường CI là `dev` (`env/dev.yaml`), không phải role Jenkins. Tạo OAuth App + ghi 2 key vào SM **trước** khi `compose up` (sai callback = lockout).
 
 ```bash
 cd ~/go-micro-infra/jenkins

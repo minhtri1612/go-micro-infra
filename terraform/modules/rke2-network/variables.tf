@@ -60,7 +60,7 @@ variable "extra_nlb_ports" {
 }
 
 variable "web_nlb_ingress_cidrs" {
-  description = "Who may hit the web NLB. dest/prod: 0.0.0.0/0. management: VPC + VPN only."
+  description = "Who may hit the web NLB. dev/prod: 0.0.0.0/0. management: VPC + VPN only."
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }

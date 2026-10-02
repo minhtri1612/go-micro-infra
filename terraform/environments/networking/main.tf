@@ -4,7 +4,7 @@
 #   management 10.0.0.0/16  <-> dev 10.1.0.0/16
 #   management 10.0.0.0/16  <-> prod 10.2.0.0/16
 #
-# Jenkins now lives in the management VPC (not 10.50). Dest/prod are optional.
+# Jenkins now lives in the management VPC (not 10.50). Dev/prod are optional.
 
 data "aws_vpc" "management" {
   filter {

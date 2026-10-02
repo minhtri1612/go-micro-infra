@@ -1,4 +1,6 @@
-aws_region = "ap-southeast-2"
+aws_region   = "ap-southeast-2"
 worker_count = 2
 # Prod never runs on Spot.
-use_spot     = false
+use_spot          = false
+db_password       = "CHANGE_ME"
+stripe_secret_key = "sk_test_REPLACE_ME"

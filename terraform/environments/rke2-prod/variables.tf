@@ -69,3 +69,23 @@ variable "admin_ssh_cidr" {
   type        = string
   default     = "0.0.0.0/0"
 }
+
+variable "db_user" {
+  type    = string
+  default = "postgres"
+}
+
+variable "db_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "stripe_secret_key" {
+  type      = string
+  sensitive = true
+
+  validation {
+    condition     = can(regex("^sk_(test|live)_", var.stripe_secret_key))
+    error_message = "stripe_secret_key must start with sk_test_ or sk_live_."
+  }
+}

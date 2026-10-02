@@ -27,7 +27,7 @@ vpn_target:
   - { cidr: "10.1.0.0", mask: "255.255.0.0" }
   - { cidr: "10.2.0.0", mask: "255.255.0.0" }
 
-# Network-level dest/prod split enforced on the VPN gateway.
+# Network-level dev/prod split enforced on the VPN gateway.
 network_ranges:
   management: "10.0.0.0/16"
   dev: "10.1.0.0/16"

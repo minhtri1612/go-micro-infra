@@ -43,7 +43,7 @@ resource "aws_lb_listener" "api" {
   }
 }
 
-# dest/prod: public NLB in front of Traefik NodePorts.
+# dev/prod: public NLB in front of Traefik NodePorts.
 # management: internal NLB in front of Argo CD / Grafana (VPN only).
 resource "aws_lb" "web" {
   name               = "${var.project_name}-web-${var.environment}"
