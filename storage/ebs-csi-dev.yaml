@@ -1,0 +1,17 @@
+# EBS CSI on dest/prod. Controller uses the node instance role
+# (AmazonEBSCSIDriverPolicy + IMDSv2 hop_limit 2). No IRSA.
+controller:
+  hostNetwork: true
+node:
+  tolerateAllTaints: true
+storageClasses:
+  - name: gp3
+    annotations:
+      storageclass.kubernetes.io/is-default-class: "true"
+    volumeBindingMode: WaitForFirstConsumer
+    reclaimPolicy: Delete
+    allowVolumeExpansion: true
+    parameters:
+      type: gp3
+      encrypted: "true"
+      fsType: ext4
