@@ -14,6 +14,13 @@
     easyrsa_bin: "/usr/share/easy-rsa/easyrsa"
 
   tasks:
+    - name: Wait until first-boot apt releases dpkg
+      ansible.builtin.shell: |
+        while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+          sleep 5
+        done
+      changed_when: false
+
     - name: Install OpenVPN and Easy-RSA
       ansible.builtin.apt:
         name: [openvpn, easy-rsa, iptables-persistent]
@@ -21,6 +28,10 @@
         update_cache: true
       environment:
         DEBIAN_FRONTEND: noninteractive
+      register: apt_pkgs
+      retries: 12
+      delay: 10
+      until: apt_pkgs is succeeded
 
     - name: Create server directories
       ansible.builtin.file:
