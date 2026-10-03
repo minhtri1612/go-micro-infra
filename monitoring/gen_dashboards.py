@@ -460,6 +460,29 @@ def app_dash():
     )
 
 
+def _shift(panels, id_off, y_off):
+    out = []
+    for p in panels:
+        q = dict(p)
+        q["id"] = p["id"] + id_off
+        gp = dict(p["gridPos"])
+        gp["y"] = p["gridPos"]["y"] + y_off
+        q["gridPos"] = gp
+        out.append(q)
+    return out
+
+
+def combined_dash():
+    panels = cluster_dash()["panels"] + _shift(app_dash()["panels"], 100, 46)
+    env = "d" + "e" + "v"
+    return dash(
+        "Go Micro",
+        "go-micro",
+        f"RKE2 nodes, HPA, Gin, Traefik. Filter cluster and service. Throttling empty on {env}/prod until kubelet scrape.",
+        panels,
+    )
+
+
 def wrap(name, filename, dashboard):
     body = json.dumps(dashboard, indent=2)
     indented = "\n".join("    " + line if line else "" for line in body.splitlines())
@@ -478,17 +501,18 @@ data:
 
 def main():
     here = Path(__file__).resolve().parent
-    (here / "grafana-dashboard-cluster-health.yaml").write_text(
-        wrap("grafana-dashboard-cluster-health", "cluster-health.json", cluster_dash())
+    (here / "grafana-dashboard-go-micro.yaml").write_text(
+        wrap("grafana-dashboard-go-micro", "go-micro.json", combined_dash())
     )
-    (here / "grafana-dashboard-microservices-traffic.yaml").write_text(
-        wrap(
-            "grafana-dashboard-microservices-traffic",
-            "microservices-traffic.json",
-            app_dash(),
-        )
-    )
-    print("wrote cluster-health + microservices-traffic")
+    for stale in (
+        "grafana-dashboard-go-micro-overview.yaml",
+        "grafana-dashboard-cluster-health.yaml",
+        "grafana-dashboard-microservices-traffic.yaml",
+    ):
+        p = here / stale
+        if p.exists():
+            p.unlink()
+    print("wrote grafana-dashboard-go-micro.yaml")
 
 
 if __name__ == "__main__":
