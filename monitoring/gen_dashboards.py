@@ -272,14 +272,14 @@ def cluster_dash():
         ),
         timeseries(
             10,
-            "Memory working set vs limit %",
-            f'100 * (container_memory_working_set_bytes{{{c}, {ns}, container!="", container!="POD"}} / clamp_min(container_spec_memory_limit_bytes{{{c}, {ns}, container!="", container!="POD"}}, 1))',
+            "Memory working set",
+            f'sum by (cluster, namespace, pod) (container_memory_working_set_bytes{{{c}, {ns}, container!="", container!="POD"}})',
             24,
             12,
             12,
             8,
-            "percent",
-            "{{cluster}} {{pod}}",
+            "bytes",
+            "{{cluster}} {{namespace}}/{{pod}}",
         ),
         stat(
             11,
@@ -419,7 +419,7 @@ def app_dash():
             f'sum(increase(gin_request_total{{{c}, {svc}, code!~"2.."}}[5m])) by (cluster, pod, uri, code)',
             22,
         ),
-        row(12, "Traefik ingress (needs metrics.prometheus on dest/prod)", 30),
+        row(12, "Traefik ingress", 30),
         timeseries(
             13,
             "Ingress RPS by code",

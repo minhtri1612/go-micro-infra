@@ -418,7 +418,7 @@ data:
                 "showPoints": "never",
                 "spanNulls": true
               },
-              "unit": "percent"
+              "unit": "bytes"
             },
             "overrides": []
           },
@@ -443,13 +443,13 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "100 * (container_memory_working_set_bytes{job=~\".+\", namespace=~\"$namespace\", container!=\"\", container!=\"POD\"} / clamp_min(container_spec_memory_limit_bytes{job=~\".+\", namespace=~\"$namespace\", container!=\"\", container!=\"POD\"}, 1))",
-              "legendFormat": "{{cluster}} {{pod}}",
+              "expr": "sum by (cluster, namespace, pod) (container_memory_working_set_bytes{job=~\".+\", namespace=~\"$namespace\", container!=\"\", container!=\"POD\"})",
+              "legendFormat": "{{cluster}} {{namespace}}/{{pod}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "Memory working set vs limit %",
+          "title": "Memory working set",
           "type": "timeseries"
         },
         {
@@ -1292,7 +1292,7 @@ data:
             "y": 76
           },
           "id": 112,
-          "title": "Traefik ingress (needs metrics.prometheus on dest/prod)",
+          "title": "Traefik ingress",
           "type": "row",
           "panels": []
         },

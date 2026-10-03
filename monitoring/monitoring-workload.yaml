@@ -58,7 +58,7 @@ kube-state-metrics:
 kubeApiServer:
   enabled: false
 kubelet:
-  enabled: false
+  enabled: true
 kubeControllerManager:
   enabled: false
 kubeScheduler:
