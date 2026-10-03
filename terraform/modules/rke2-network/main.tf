@@ -364,6 +364,17 @@ resource "aws_security_group" "master" {
     }
   }
 
+  dynamic "ingress" {
+    for_each = length(var.extra_node_port_cidrs) > 0 ? var.extra_node_ports : []
+    content {
+      description = "Platform NodePort ${ingress.value} from peered VPCs"
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = var.extra_node_port_cidrs
+    }
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -405,6 +416,17 @@ resource "aws_security_group" "worker" {
       to_port         = ingress.value
       protocol        = "tcp"
       security_groups = [aws_security_group.web_nlb.id]
+    }
+  }
+
+  dynamic "ingress" {
+    for_each = length(var.extra_node_port_cidrs) > 0 ? var.extra_node_ports : []
+    content {
+      description = "Platform NodePort ${ingress.value} from peered VPCs"
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = var.extra_node_port_cidrs
     }
   }
 

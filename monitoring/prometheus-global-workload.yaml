@@ -8,5 +8,5 @@ spec:
   ports:
   - name: http
     port: 80
-    targetPort: 9090
-  # Không có selector ở cụm workload vì Pod nằm ở cụm Management
+    targetPort: 32090
+  # Không có selector: Endpoints trỏ NodePort Prometheus management (peering).

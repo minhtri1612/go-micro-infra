@@ -12,11 +12,14 @@ module "network" {
   private_subnet_cidrs = var.private_subnet_cidrs
   admin_ssh_cidr       = var.admin_ssh_cidr
   https_node_port      = 30443
-  extra_node_ports     = [32000, 32090]
-  extra_nlb_ports      = [32000, 32090]
+  extra_node_ports      = [32000, 32090]
+  extra_nlb_ports       = [32000, 32090]
+  extra_node_port_cidrs = ["10.1.0.0/16", "10.2.0.0/16"]
   web_nlb_ingress_cidrs = [
     var.vpc_cidr,
     "10.8.0.0/24",
+    "10.1.0.0/16",
+    "10.2.0.0/16",
   ]
 }
 

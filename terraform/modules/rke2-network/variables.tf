@@ -53,6 +53,12 @@ variable "extra_node_ports" {
   default     = []
 }
 
+variable "extra_node_port_cidrs" {
+  description = "Peered CIDRs allowed to hit extra_node_ports directly (Prometheus remote_write)"
+  type        = list(string)
+  default     = []
+}
+
 variable "extra_nlb_ports" {
   description = "Additional listen ports on the web NLB security group"
   type        = list(number)
