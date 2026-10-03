@@ -26,7 +26,7 @@ def templating():
                 "name": "namespace",
                 "type": "query",
                 "datasource": DS,
-                "query": 'label_values(kube_pod_info{cluster=~"$cluster"}, namespace)',
+                "query": "label_values(kube_pod_info, namespace)",
                 "includeAll": True,
                 "multi": True,
                 "allValue": ".*",
@@ -186,7 +186,9 @@ def dash(title, uid, desc, panels):
 
 
 def cluster_dash():
-    c = 'cluster=~"$cluster"'
+    # external_labels (cluster=management) are NOT stored on local scrapes — only on remote_write.
+    # Filtering cluster=~"$cluster" makes every panel No data on the management Prometheus.
+    c = 'job=~".+"'
     ns = 'namespace=~"$namespace"'
     panels = [
         row(1, "Nodes", 0),
@@ -337,7 +339,7 @@ def cluster_dash():
 
 
 def app_dash():
-    c = 'cluster=~"$cluster"'
+    c = 'job=~".+"'
     svc = 'pod=~"($service)-.*"'
     panels = [
         row(1, "Service health", 0),

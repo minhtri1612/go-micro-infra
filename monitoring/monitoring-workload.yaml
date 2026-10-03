@@ -30,7 +30,7 @@ prometheus:
         medium: ""
     remoteWrite:
       # Set via ./scripts/sync-monitoring-remote-write-url.sh (placeholder until RKE2 management Prometheus exists).
-      - url: http://127.0.0.1:32090/api/v1/write
+      - url: http://prometheus-global.monitoring.svc:80/api/v1/write
         name: management
         queueConfig:
           capacity: 10000
