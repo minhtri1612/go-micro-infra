@@ -6,9 +6,12 @@ Jenkins **không** chạy trong RKE2, không do Helm/Argo quản. Đây là serv
 
 ```
 Dev  →  git push service repo
-          Jenkins job  services/<name>
-            1. docker build/push
-            2. bump go-micro-gitops/env/dev.yaml
+          Jenkins job  services/<name>     (Jenkinsfile trong repo — chỉ Test)
+          Jenkins job  release/<name>      (Jenkinsfile trong repo này)
+            1. checkout allowlist repo
+            2. test
+            3. docker build/push
+            4. bump go-micro-gitops/env/dev/<service>.yaml
           Argo CD (RKE2 management)  →  dev/prod cluster
 ```
 
@@ -46,7 +49,9 @@ Shape JSON: `jenkins/secrets.example.json`. File `.env.runtime` sinh ra trên di
 
 GitHub **không** webhook được Jenkins private. Job `services/*` scan repo mỗi 2 phút (`periodicFolderTrigger`). Terraform plan cron mỗi ~2 phút (open PR), apply poll `main`.
 
-Job: `services/product`, `services/order`, … và `platform/terraform-management-plan`, `platform/terraform-management-apply`.
+Job: `services/<name>` (test), `release/<name>` (deploy; pipeline `jenkins/release/Jenkinsfile`), và `platform/terraform-management-plan`, `platform/terraform-management-apply`.
+
+Library `go-micro-ci` pin tag `v1.1.0`, `allowVersionOverride: false`. Docker Hub + GitOps write PAT nằm folder `release/`, không GLOBAL. `github-go-micro-pat` GLOBAL chỉ để clone — nên đổi sang PAT read-only và để `GITHUB_PAT_WRITE` cho folder.
 
 ## Terraform trên Jenkins (PR → plan → merge → apply)
 
@@ -85,6 +90,6 @@ Laptop không apply `rke2-*` trừ khi Jenkins chết.
 
 | DevOps (repo này + pipeline-lib) | Dev (repo service) |
 |---|---|
-| docker compose, JCasC, credentials | `Jenkinsfile` 5 dòng |
-| Job DSL một job / service | code + test |
-| Shared library `go-micro-ci` | không viết docker/gitops trong Jenkinsfile |
+| docker compose, JCasC, credentials | `Jenkinsfile` một dòng, không `@main` |
+| Job DSL `services/*` + `release/*` | code + test |
+| Shared library `go-micro-ci` (pin tag) | không viết docker/gitops trong Jenkinsfile |

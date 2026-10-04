@@ -1,0 +1,6 @@
+// DevOps-owned. Not loaded from a service repo.
+// Job DSL creates release/<service> and sets EXPECTED_SERVICE.
+@Library('go-micro-ci') _
+
+def service = (params.EXPECTED_SERVICE ?: env.JOB_NAME.tokenize('/')[-1]).toString().trim()
+ciGoMicroService(service)
