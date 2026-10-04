@@ -51,7 +51,7 @@ GitHub **không** webhook được Jenkins private. Job `services/*` scan repo m
 
 Job: `services/<name>` (test), `release/<name>` (deploy; pipeline `jenkins/release/Jenkinsfile`), và `platform/terraform-management-plan`, `platform/terraform-management-apply`.
 
-Library `go-micro-ci` pin tag `v1.1.5`, `allowVersionOverride: false`. Docker Hub + GitOps write PAT nằm folder `release/`, không GLOBAL. `github-go-micro-pat` GLOBAL chỉ để clone — nên đổi sang PAT read-only và để `GITHUB_PAT_WRITE` cho folder.
+Library `go-micro-ci` pin tag `v1.1.6`, `allowVersionOverride: false`. Docker Hub + GitOps write PAT nằm folder `release/`, không GLOBAL. `github-go-micro-pat` GLOBAL chỉ để clone — nên đổi sang PAT read-only và để `GITHUB_PAT_WRITE` cho folder.
 
 ## Terraform trên Jenkins (PR → plan → merge → apply)
 
