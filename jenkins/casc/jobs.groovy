@@ -1,6 +1,39 @@
 folder('services') {
   displayName('services')
-  description('Multibranch per service repo. main → image + bump env/dev.yaml. PR/other branches → image only.')
+  description('Multibranch per service repo. Jenkinsfile from the service: Test only. main → handoff release/<name>.')
+}
+
+folder('release') {
+  displayName('release')
+  description('DevOps-owned. Pipeline from go-micro-infra/jenkins/release/Jenkinsfile. Checkout allowlist repo. Docker/GitOps creds live here, not GLOBAL.')
+  properties {
+    folderCredentialsProperty {
+      domainCredentials {
+        domainCredentials {
+          domain {
+            name('')
+            description('')
+          }
+          credentials {
+            usernamePassword {
+              scope('GLOBAL')
+              id('dockerhub-credentials')
+              description('Docker Hub — release folder only')
+              username(System.getenv('DOCKERHUB_USER') ?: '')
+              password(System.getenv('DOCKERHUB_TOKEN') ?: '')
+            }
+            usernamePassword {
+              scope('GLOBAL')
+              id('github-gitops-write')
+              description('GitHub PAT write GitOps — release folder only')
+              username(System.getenv('GITHUB_USER') ?: '')
+              password(System.getenv('GITHUB_PAT_WRITE') ?: System.getenv('GITHUB_PAT') ?: '')
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 def services = [
@@ -16,7 +49,7 @@ services.each { svc ->
   def jobName = "services/${svc.name}"
   multibranchPipelineJob(jobName) {
     displayName(svc.name)
-    description("CI ${svc.name}. Push main → image + bump env/dev.yaml. PR/other branches → image only.")
+    description("Test ${svc.name}. Jenkinsfile from the service repo. main → trigger release/${svc.name}. No Docker/GitOps creds.")
     branchSources {
       git {
         id("go-micro-${svc.name}")
@@ -40,6 +73,33 @@ services.each { svc ->
         daysToKeep(7)
         numToKeep(20)
       }
+    }
+  }
+
+  pipelineJob("release/${svc.name}") {
+    displayName(svc.name)
+    description("Release ${svc.name}. Pipeline from go-micro-infra, not the service Jenkinsfile. EXPECTED_SERVICE=${svc.name}.")
+    parameters {
+      stringParam('EXPECTED_SERVICE', svc.name, 'DevOps-owned. Job DSL sets this; do not change.')
+      choiceParam('TARGET_ENV', ['dev', 'prod'], 'dev = rebuild + bump env/dev. prod = GitOps PR; no rebuild.')
+    }
+    definition {
+      cpsScm {
+        scm {
+          git {
+            remote {
+              url('https://github.com/minhtri1612/go-micro-infra.git')
+              credentials('github-go-micro-pat')
+            }
+            branch('*/main')
+          }
+        }
+        scriptPath('jenkins/release/Jenkinsfile')
+        lightweight(false)
+      }
+    }
+    properties {
+      githubProjectUrl(svc.repo.replace('.git', '/'))
     }
   }
 }

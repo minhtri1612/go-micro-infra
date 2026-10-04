@@ -1,5 +1,5 @@
 jenkins:
-  systemMessage: "go-micro CI. Developer: folder services only. Push main → image + env/dev.yaml."
+  systemMessage: "go-micro CI. Developer: services/* test only. Release: folder release/ (infra Jenkinsfile). Library pin tag, no version override."
   numExecutors: 2
   mode: NORMAL
   securityRealm:
@@ -39,6 +39,27 @@ jenkins:
               - "Job/Workspace"
             entries:
               - user: "${JENKINS_DEVELOPER_ID}"
+          - name: "developer-release"
+            pattern: "^release(/.*)?$"
+            permissions:
+              - "Job/Read"
+              - "Job/Discover"
+              - "Job/Build"
+              - "Job/Cancel"
+              - "Job/Workspace"
+            entries:
+              - user: "${JENKINS_DEVELOPER_ID}"
+          - name: "devops-release"
+            pattern: "^release(/.*)?$"
+            permissions:
+              - "Job/Read"
+              - "Job/Discover"
+              - "Job/Build"
+              - "Job/Cancel"
+              - "Job/Workspace"
+              - "Job/Configure"
+            entries:
+              - user: "${JENKINS_ADMIN_ID}"
           - name: "devops-platform"
             pattern: "^platform(/.*)?$"
             permissions:
@@ -65,15 +86,9 @@ credentials:
     domainCredentials:
       - credentials:
           - usernamePassword:
-              id: "dockerhub-credentials"
-              scope: GLOBAL
-              description: "Docker Hub (CI push images)"
-              username: "${DOCKERHUB_USER}"
-              password: "${DOCKERHUB_TOKEN}"
-          - usernamePassword:
               id: "github-go-micro-pat"
               scope: GLOBAL
-              description: "GitHub PAT (clone service repos + push gitops)"
+              description: "GitHub PAT clone-only (library + service/infra SCM). Prefer read-only. Write GitOps is folder release/ github-gitops-write."
               username: "${GITHUB_USER}"
               password: "${GITHUB_PAT}"
           - usernamePassword:
@@ -105,9 +120,9 @@ unclassified:
   globalLibraries:
     libraries:
       - name: "go-micro-ci"
-        defaultVersion: "main"
+        defaultVersion: "v1.1.0"
         implicit: false
-        allowVersionOverride: true
+        allowVersionOverride: false
         includeInChangesets: false
         retriever:
           modernSCM:
