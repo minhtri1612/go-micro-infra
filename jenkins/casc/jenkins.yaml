@@ -44,9 +44,6 @@ jenkins:
             permissions:
               - "Job/Read"
               - "Job/Discover"
-              - "Job/Build"
-              - "Job/Cancel"
-              - "Job/Workspace"
             entries:
               - user: "${JENKINS_DEVELOPER_ID}"
           - name: "devops-release"
