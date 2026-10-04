@@ -77,7 +77,7 @@ chmod +x github/configure-repo.sh
 ./github/configure-repo.sh
 ```
 
-Không tạo GitHub webhook. `configure-repo.sh` chỉ bật branch protection (`terraform-plan`).
+Không tạo GitHub webhook. `configure-repo.sh` → `configure-governance.sh`: bảo vệ `main` mọi repo service + pipeline-lib + infra + gitops. Service bắt check `ci`. GitOps bắt check `protect`. Jenkins user được bypass chỉ để bump dev; `env/prod/**` và `env/staging/**` không bypass.
 
 ### Manual / emergency
 
