@@ -120,7 +120,7 @@ unclassified:
   globalLibraries:
     libraries:
       - name: "go-micro-ci"
-        defaultVersion: "v1.1.1"
+        defaultVersion: "v1.1.3"
         implicit: false
         allowVersionOverride: false
         includeInChangesets: false
