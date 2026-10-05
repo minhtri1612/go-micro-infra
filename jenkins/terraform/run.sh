@@ -2,18 +2,7 @@
 # DevOps-owned Terraform runner for Jenkins. Not go-micro-ci.
 set -euo pipefail
 
-ACTION="${1:?usage: run.sh plan|apply|destroy-target}"
-STACK="${TF_STACK:-rke2-management}"
-
-case "${STACK}" in
-  rke2-management | rke2-dev | rke2-prod | networking) ;;
-  *)
-    echo "TF_STACK allowlist: rke2-management rke2-dev rke2-prod networking" >&2
-    exit 1
-    ;;
-esac
-
-CHDIR="terraform/environments/${STACK}"
+ACTION="${1:?usage: run.sh plan|apply|destroy-all}"
 
 : "${TF_STATE_BUCKET:?set TF_STATE_BUCKET}"
 : "${AWS_ACCESS_KEY_ID:?}"
@@ -23,7 +12,16 @@ export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-southeast-2}"
 export TF_IN_AUTOMATION=1
 export TF_INPUT=0
 
-write_backend() {
+use_stack() {
+  STACK="$1"
+  case "${STACK}" in
+    rke2-management | rke2-dev | rke2-prod | networking) ;;
+    *)
+      echo "TF_STACK allowlist: rke2-management rke2-dev rke2-prod networking" >&2
+      exit 1
+      ;;
+  esac
+  CHDIR="terraform/environments/${STACK}"
   cat >"${CHDIR}/backend.hcl" <<EOF
 bucket       = "${TF_STATE_BUCKET}"
 key          = "${STACK}/terraform.tfstate"
@@ -35,6 +33,13 @@ EOF
 
 tf() {
   terraform -chdir="${CHDIR}" "$@"
+}
+
+prepare() {
+  use_stack "$1"
+  tf init -backend-config=backend.hcl -input=false -no-color
+  tf fmt -check
+  tf validate -no-color
 }
 
 summarize_plan() {
@@ -52,17 +57,14 @@ summarize_plan() {
   echo "${line}" | sed -n 's/^Plan: \([0-9]*\) to add, \([0-9]*\) to change, \([0-9]*\) to destroy.*/add=\1 change=\2 destroy=\3/p'
 }
 
-write_backend
-tf init -backend-config=backend.hcl -input=false -no-color
-tf fmt -check
-tf validate -no-color
-
 case "${ACTION}" in
   plan)
+    prepare "${TF_STACK:-rke2-management}"
     tf plan -input=false -no-color -out=tfplan | tee "${CHDIR}/plan.txt"
     summarize_plan "${CHDIR}/plan.txt" | tee "${CHDIR}/plan-summary.txt"
     ;;
   apply)
+    prepare "${TF_STACK:-rke2-management}"
     tf plan -input=false -no-color -out=tfplan | tee "${CHDIR}/plan.txt"
     summarize_plan "${CHDIR}/plan.txt" | tee "${CHDIR}/plan-summary.txt"
     if [[ "${SKIP_PR_COMPARE:-false}" != "true" ]]; then
@@ -75,9 +77,14 @@ case "${ACTION}" in
     fi
     tf apply -input=false -no-color tfplan
     ;;
-  destroy-target)
-    echo "destroy-target is retired. Destroy a stack from the laptop: terraform -chdir=terraform/environments/\$TF_STACK destroy" >&2
-    exit 1
+  destroy-all | destroy-target)
+    # Peering first, then the two app clusters, management last.
+    # Management includes this Jenkins EC2, so the build can die on that last stack.
+    for stack in networking rke2-dev rke2-prod rke2-management; do
+      echo "=== destroy ${stack} ==="
+      prepare "${stack}"
+      tf destroy -auto-approve -input=false -no-color
+    done
     ;;
   *)
     echo "unknown action ${ACTION}" >&2
