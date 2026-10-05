@@ -139,10 +139,10 @@ pipelineJob('platform/terraform-management-plan') {
 }
 
 pipelineJob('platform/terraform-management-apply') {
-  description('SCM poll of main. Applies when terraform/** changed. Manual destroy-target still allowed.')
+  description('SCM poll of main. Applies when terraform/** changed. destroy-all is manual and removes every stack.')
   parameters {
-    choiceParam('ACTION', ['apply', 'destroy-target'], 'Poll/merge uses apply. destroy-target is manual only.')
-    stringParam('TARGET', '', 'Unused. destroy-target is retired.')
+    choiceParam('ACTION', ['apply', 'destroy-all'], 'Poll/merge uses apply. destroy-all removes networking, dev, prod, then management.')
+    stringParam('TARGET', '', 'Unused.')
     booleanParam('SKIP_PR_COMPARE', false, 'Emergency only. Default compares PR plan summary.')
     stringParam('PR_PLAN_SUMMARY', '', 'Override; else read PR comment marker')
   }
