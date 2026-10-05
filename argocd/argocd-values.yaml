@@ -26,6 +26,33 @@ redis:
   networkPolicy:
     create: false
 
+# Internal NLB DNS. Browser must open this host over VPN. GitHub OAuth callback:
+# https://<domain>/api/dex/callback
+global:
+  domain: go-micro-web-management-58a26c585928c1bf.elb.ap-southeast-2.amazonaws.com
+
 configs:
   params:
     reposerver.metrics.listen.address: "0.0.0.0"
+  cm:
+    # Client id/secret are keys on secret/argocd-secret, not in git:
+    # dex.github.clientID, dex.github.clientSecret
+    dex.config: |
+      connectors:
+        - type: github
+          id: github
+          name: GitHub
+          config:
+            clientID: $dex.github.clientID
+            clientSecret: $dex.github.clientSecret
+  rbac:
+    # Empty default: a GitHub login with no binding below has no permissions.
+    # Local admin stays the break-glass account.
+    policy.default: ""
+    scopes: "[groups, email]"
+    policy.csv: |
+      p, role:developer, applications, get, dev/*, allow
+      p, role:developer, applications, sync, dev/*, allow
+      p, role:developer, logs, get, dev/*, allow
+      p, role:developer, projects, get, dev, allow
+      g, minhtri1612, role:admin
