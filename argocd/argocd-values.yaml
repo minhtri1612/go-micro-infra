@@ -56,3 +56,4 @@ configs:
       p, role:developer, logs, get, dev/*, allow
       p, role:developer, projects, get, dev, allow
       g, minhtri1612, role:admin
+      g, tri1612-dot, role:developer
